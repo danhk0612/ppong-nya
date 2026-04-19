@@ -7,7 +7,6 @@ const DATA_MIRRORS = [
   "https://5-data.amae-koromo.com/",
   "https://1.data.amae-koromo.com/",
   "https://2.data.amae-koromo.com/",
-  "https://3.data.amae-koromo.com/",
   "https://4.data.amae-koromo.com/",
 ];
 const PROBE_TIMEOUT = 15000;
