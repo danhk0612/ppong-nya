@@ -25,6 +25,10 @@
 - 모바일 우선 카드/표 UI 컴포넌트
 - Docker 및 Docker Compose 기반 실행 구성
 
+## 문서
+
+- 외부 API endpoint 인벤토리, 마이그레이션 계획, 그리고 클라이언트가 외부 API를 직접 호출하지 않고 내부 `/api/external/*`를 거쳐야 하는 정책은 [`docs/external-api-plan.md`](docs/external-api-plan.md)를 참고하세요.
+
 ## 기술 스택
 
 - 런타임: `Node.js` 20 이상, `npm` 10 이상
