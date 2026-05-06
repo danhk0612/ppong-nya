@@ -47,7 +47,7 @@
 
 ## 환경 변수
 
-로컬 개발에서는 `.env.example`을 복사해 `.env`를 만들고 값을 채웁니다.
+로컬 개발에서는 저장소 루트의 `.env.example`을 복사해 `.env`를 만들고 값을 채웁니다.
 
 ```bash
 cp .env.example .env
@@ -59,8 +59,8 @@ cp .env.example .env
 | `AUTH_SECRET` | 필수 | 서버 전용 | `openssl rand -base64 32`로 생성한 긴 문자열 | Auth.js/SvelteKitAuth 쿠키와 토큰 서명/암호화에 사용하는 비밀값입니다. |
 | `GOOGLE_CLIENT_ID` | 필수 | 서버 전용 | `replace-with-google-client-id.apps.googleusercontent.com` | Google OAuth 클라이언트 ID입니다. |
 | `GOOGLE_CLIENT_SECRET` | 필수 | 서버 전용 | `replace-with-google-client-secret` | Google OAuth 클라이언트 보안 비밀입니다. |
-| `PUBLIC_SITE_URL` | 필수 | 공개 | `http://localhost:5173` | 서비스의 기준 URL입니다. OAuth 리다이렉트 검증과 공개 런타임 설정에 사용됩니다. |
 | `PUBLIC_SITE_NAME` | 선택 | 공개 | `퐁냐` | 공개 사이트명입니다. 값이 없으면 코드에서 `퐁냐`를 기본값으로 사용합니다. |
+| `PUBLIC_SITE_URL` | 필수 | 공개 | `http://localhost:5173` | 서비스의 기준 URL입니다. OAuth 리다이렉트 검증과 공개 런타임 설정에 사용됩니다. |
 | `ORIGIN` | 배포 시 권장 | 서버 런타임 | `https://ppong-nya.com` | `@sveltejs/adapter-node` 실행 시 요청 origin 검증에 사용하는 값입니다. Docker 예시는 `http://localhost:3000`을 사용합니다. |
 | `HOST` | 배포 시 권장 | 서버 런타임 | `0.0.0.0` | Node adapter 서버가 바인딩할 호스트입니다. |
 | `PORT` | 배포 시 권장 | 서버 런타임 | `3000` | Node adapter 서버 포트입니다. |
@@ -251,4 +251,4 @@ npm run db:migrate:deploy
 
 ## 라이선스
 
-이 저장소에는 아직 명시적인 라이선스 파일이 없습니다. 배포 또는 외부 공개 전에 프로젝트 소유자가 라이선스를 결정하고 `LICENSE` 파일을 추가해야 합니다.
+이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](./LICENSE)를 참고하세요.
