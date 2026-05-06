@@ -2,26 +2,27 @@
   import "../app.css";
   import { primaryNavigation } from "$lib/navigation";
   import AuthNavigation from "$lib/components/AuthNavigation.svelte";
+  import { ko } from "$lib/i18n";
 
   let { data } = $props();
 </script>
 
 <svelte:head>
-  <title>퐁냐 | ppong-nya</title>
+  <title>{ko.app.title}</title>
   <meta
     name="description"
-    content="퐁냐(ppong-nya)는 작혼 전적, 랭킹, 통계를 한눈에 살펴보는 한국어 서비스입니다."
+    content={ko.app.description}
   />
 </svelte:head>
 
 <div class="min-h-screen bg-slate-50 text-slate-950">
   <header class="sticky top-0 z-20 border-b border-white/60 bg-white/85 backdrop-blur">
-    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="기본 내비게이션">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label={ko.app.navigationLabel}>
       <a class="flex items-center gap-3 font-semibold tracking-tight" href="/">
         <span class="grid h-10 w-10 place-items-center rounded-2xl bg-pink-500 text-lg text-white shadow-lg shadow-pink-200">
-          にゃ
+          {ko.app.logoKana}
         </span>
-        <span class="text-xl">퐁냐</span>
+        <span class="text-xl">{ko.app.name}</span>
       </a>
 
       <div class="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">

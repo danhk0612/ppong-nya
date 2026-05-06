@@ -29,14 +29,14 @@ i18n
   .use(LanguageDetector)
   .init({
     lowerCaseLng: true,
-    fallbackLng: "zh-hans",
+    lng: "ko",
+    fallbackLng: "ko",
     defaultNS: "default",
     debug: DEBUG,
-    supportedLngs: ["ja", "zh-hans", "en", "ko"],
+    supportedLngs: ["ko"],
     detection: {
-      order: ["localStorage", "navigator"],
+      order: ["localStorage"],
       caches: ["localStorage"],
-      checkWhitelist: true,
     },
 
     returnEmptyString: false,
@@ -67,7 +67,7 @@ i18n
 
 if (typeof document !== "undefined") {
   i18n.on("languageChanged", function () {
-    document.documentElement.lang = i18n.language;
+    document.documentElement.lang = "ko";
     triggerRelayout();
   });
 }
