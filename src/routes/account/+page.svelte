@@ -2,9 +2,13 @@
   import { onMount } from "svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
+  import CollectionItem from "$lib/components/CollectionItem.svelte";
   import Input from "$lib/components/Input.svelte";
+  import PageSection from "$lib/components/PageSection.svelte";
   import Select from "$lib/components/Select.svelte";
   import StatusBlock from "$lib/components/StatusBlock.svelte";
+  import SummaryTile from "$lib/components/SummaryTile.svelte";
+  import Textarea from "$lib/components/Textarea.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
     createUserDataApi,
@@ -131,7 +135,7 @@
   <meta name="description" content={ko.account.description} />
 </svelte:head>
 
-<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+<PageSection>
   <Card class="overflow-hidden" padded={false}>
     <div class="bg-ink-950 p-5 text-white sm:p-8">
       <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -151,14 +155,8 @@
     </div>
 
     <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-      <div class="rounded-3xl bg-cream-100 p-5">
-        <dt class="text-sm font-black text-ink-500">{ko.account.userId}</dt>
-        <dd class="mt-2 break-all font-mono text-sm text-ink-900">{user.id}</dd>
-      </div>
-      <div class="rounded-3xl bg-cream-100 p-5">
-        <dt class="text-sm font-black text-ink-500">{ko.account.role}</dt>
-        <dd class="mt-2 font-black text-ink-900">{user.role}</dd>
-      </div>
+      <SummaryTile label={ko.account.userId} value={user.id} monospace />
+      <SummaryTile label={ko.account.role} value={user.role} />
     </div>
   </Card>
 
@@ -184,13 +182,15 @@
       </form>
       <div class="mt-5 divide-y divide-ink-100">
         {#each preferences as preference}
-          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-center xs:justify-between">
-            <div class="min-w-0">
+          <CollectionItem>
+            {#snippet content()}
               <p class="font-black text-ink-900">{preference.key}</p>
               <p class="break-all text-sm text-ink-500">{JSON.stringify(preference.value)}</p>
-            </div>
-            <Button variant="ghost" size="sm" aria-label={ko.account.preferences.delete} onclick={() => removeItem(() => api.deletePreference(preference.id), ko.account.messages.preferenceDeleted)}>{ko.account.preferences.delete}</Button>
-          </article>
+            {/snippet}
+            {#snippet action()}
+              <Button variant="ghost" size="sm" aria-label={ko.account.preferences.delete} onclick={() => removeItem(() => api.deletePreference(preference.id), ko.account.messages.preferenceDeleted)}>{ko.account.preferences.delete}</Button>
+            {/snippet}
+          </CollectionItem>
         {:else}
           <StatusBlock title={ko.account.preferences.empty} />
         {/each}
@@ -209,13 +209,15 @@
       </form>
       <div class="mt-5 divide-y divide-ink-100">
         {#each favorites as favorite}
-          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-center xs:justify-between">
-            <div>
+          <CollectionItem>
+            {#snippet content()}
               <p class="font-black text-ink-900">{favorite.nickname}</p>
               <p class="text-sm text-ink-500">{favorite.playerId}{favorite.server ? ` · ${favorite.server}` : ""}</p>
-            </div>
-            <Button variant="ghost" size="sm" aria-label={ko.account.favorites.delete} onclick={() => removeItem(() => api.deleteFavorite(favorite.id), ko.account.messages.favoriteDeleted)}>{ko.account.favorites.delete}</Button>
-          </article>
+            {/snippet}
+            {#snippet action()}
+              <Button variant="ghost" size="sm" aria-label={ko.account.favorites.delete} onclick={() => removeItem(() => api.deleteFavorite(favorite.id), ko.account.messages.favoriteDeleted)}>{ko.account.favorites.delete}</Button>
+            {/snippet}
+          </CollectionItem>
         {:else}
           <StatusBlock title={ko.account.favorites.empty} />
         {/each}
@@ -236,13 +238,15 @@
       </form>
       <div class="mt-5 divide-y divide-ink-100">
         {#each gameRecords as record}
-          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-center xs:justify-between">
-            <div>
+          <CollectionItem>
+            {#snippet content()}
               <a class="font-black text-ink-900 hover:text-brand-700" href={`/records/${record.id}`}>{record.mode} · {record.tableName ?? ko.account.records.untitled}</a>
               <p class="text-sm text-ink-500">{formatDateTime(record.startedAt)} · {record.rounds == null ? ko.account.records.noRounds : formatNumber(record.rounds)}국</p>
-            </div>
-            <Button variant="ghost" size="sm" aria-label={ko.account.records.delete} onclick={() => removeItem(() => api.deleteGameRecord(record.id), ko.account.messages.recordDeleted)}>{ko.account.records.delete}</Button>
-          </article>
+            {/snippet}
+            {#snippet action()}
+              <Button variant="ghost" size="sm" aria-label={ko.account.records.delete} onclick={() => removeItem(() => api.deleteGameRecord(record.id), ko.account.messages.recordDeleted)}>{ko.account.records.delete}</Button>
+            {/snippet}
+          </CollectionItem>
         {:else}
           <StatusBlock title={ko.account.records.empty} actionLabel="대국 목록 보기" actionHref="/records" />
         {/each}
@@ -258,22 +262,24 @@
             <option value={record.id}>{record.mode} · {record.tableName ?? formatDate(record.startedAt)}</option>
           {/each}
         </Select>
-        <textarea class="min-h-32 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-base text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100" bind:value={noteBody} placeholder={ko.account.notes.bodyPlaceholder} aria-label={ko.account.notes.bodyPlaceholder} required></textarea>
+        <Textarea bind:value={noteBody} placeholder={ko.account.notes.bodyPlaceholder} aria-label={ko.account.notes.bodyPlaceholder} required />
         <Button class="w-full" type="submit" aria-label={ko.account.notes.save}>{ko.account.notes.save}</Button>
       </form>
       <div class="mt-5 divide-y divide-ink-100">
         {#each notes as note}
-          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-start xs:justify-between">
-            <div class="min-w-0">
+          <CollectionItem class="xs:items-start">
+            {#snippet content()}
               <p class="font-black text-ink-900">{note.title}</p>
               <p class="mt-1 line-clamp-2 text-sm text-ink-500">{note.body}</p>
-            </div>
-            <Button variant="ghost" size="sm" aria-label={ko.account.notes.delete} onclick={() => removeItem(() => api.deleteNote(note.id), ko.account.messages.noteDeleted)}>{ko.account.notes.delete}</Button>
-          </article>
+            {/snippet}
+            {#snippet action()}
+              <Button variant="ghost" size="sm" aria-label={ko.account.notes.delete} onclick={() => removeItem(() => api.deleteNote(note.id), ko.account.messages.noteDeleted)}>{ko.account.notes.delete}</Button>
+            {/snippet}
+          </CollectionItem>
         {:else}
           <StatusBlock title={ko.account.notes.empty} />
         {/each}
       </div>
     </Card>
   </div>
-</section>
+</PageSection>

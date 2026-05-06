@@ -2,6 +2,7 @@
 export default {
   content: ["./src/**/*.{html,js,svelte,ts}"],
   theme: {
+    // Breakpoints: mobile-first layout starts at 320px body min-width; xs supports compact phones, md switches record cards to tables, lg enables desktop multi-column dashboards.
     screens: {
       xs: "360px",
       sm: "640px",
@@ -11,6 +12,7 @@ export default {
       "2xl": "1536px",
     },
     extend: {
+      // Brand color scale: Sakura pink is the primary action/accent, ink is the neutral text/surface scale, and cream is the warm page background.
       colors: {
         brand: {
           50: "#fff1f8",
@@ -45,6 +47,7 @@ export default {
         sakura: "#ec4899",
         night: "#090f1f",
       },
+      // Spacing rhythm: page tokens are horizontal gutters; section tokens define vertical whitespace for repeated page blocks.
       spacing: {
         page: "1rem",
         "page-sm": "1.5rem",
@@ -52,10 +55,12 @@ export default {
         section: "4rem",
         "section-lg": "7rem",
       },
+      // Shape language: card radius is used for elevated surfaces; pill is reserved for nav chips and badges.
       borderRadius: {
         card: "1.75rem",
         pill: "999px",
       },
+      // Typography: Pretendard first for Korean UI legibility, Inter/system fallbacks for Latin and platform consistency.
       fontFamily: {
         sans: [
           "Pretendard",
@@ -72,6 +77,7 @@ export default {
           "sans-serif",
         ],
       },
+      // Display type: hero uses a clamp so the home heading scales across mobile, tablet, and desktop without custom page CSS.
       fontSize: {
         hero: [
           "clamp(2.5rem,8vw,5.5rem)",

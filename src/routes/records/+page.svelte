@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
+  import PageSection from "$lib/components/PageSection.svelte";
   import StatusBlock from "$lib/components/StatusBlock.svelte";
   import Table from "$lib/components/Table.svelte";
   import { formatDateTime, formatNumber, ko } from "$lib/i18n";
@@ -37,15 +39,16 @@
   <meta name="description" content="ppong-nya에 저장한 대국 기록 목록을 확인합니다." />
 </svelte:head>
 
-<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-      <p class="text-sm font-black text-brand-600">Records</p>
-      <h1 class="mt-2 text-4xl font-black tracking-tight text-ink-950">대국 목록</h1>
-      <p class="mt-3 max-w-2xl text-sm leading-6 text-ink-600">모바일에서는 카드형 목록으로, 태블릿 이상에서는 표 형태로 저장한 대국을 빠르게 탐색합니다.</p>
-    </div>
-    <Button href="/account" variant="secondary">계정에서 대국 추가</Button>
-  </div>
+<PageSection>
+  <PageHeader
+    eyebrow="Records"
+    title="대국 목록"
+    description="모바일에서는 카드형 목록으로, 태블릿 이상에서는 표 형태로 저장한 대국을 빠르게 탐색합니다."
+  >
+    {#snippet actions()}
+      <Button href="/account" variant="secondary">계정에서 대국 추가</Button>
+    {/snippet}
+  </PageHeader>
 
   {#if loading}
     <StatusBlock class="mt-8" tone="loading" title={ko.account.loading} description="대국 기록을 불러오는 중입니다." />
@@ -88,4 +91,4 @@
       </div>
     {/if}
   {/if}
-</section>
+</PageSection>
