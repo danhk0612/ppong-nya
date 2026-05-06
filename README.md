@@ -25,6 +25,10 @@
 - 모바일 우선 카드/표 UI 컴포넌트
 - Docker 및 Docker Compose 기반 실행 구성
 
+## 문서
+
+- 외부 API endpoint 인벤토리, 마이그레이션 계획, 그리고 클라이언트가 외부 API를 직접 호출하지 않고 내부 `/api/external/*`를 거쳐야 하는 정책은 [`docs/external-api-plan.md`](docs/external-api-plan.md)를 참고하세요.
+
 ## 기술 스택
 
 - 런타임: `Node.js` 20 이상, `npm` 10 이상
@@ -47,7 +51,7 @@
 
 ## 환경 변수
 
-로컬 개발에서는 `.env.example`을 복사해 `.env`를 만들고 값을 채웁니다.
+로컬 개발에서는 저장소 루트의 `.env.example`을 복사해 `.env`를 만들고 값을 채웁니다.
 
 ```bash
 cp .env.example .env
@@ -262,4 +266,4 @@ npm run db:migrate:deploy
 
 ## 라이선스
 
-이 저장소에는 아직 명시적인 라이선스 파일이 없습니다. 배포 또는 외부 공개 전에 프로젝트 소유자가 라이선스를 결정하고 `LICENSE` 파일을 추가해야 합니다.
+이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](./LICENSE)를 참고하세요.
