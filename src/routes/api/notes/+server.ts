@@ -1,11 +1,12 @@
 import { requireGoogleApiSession } from "$lib/server/auth";
 import {
-  optionalJson,
+  optionalPrismaJson,
   optionalString,
   readJsonObject,
   requireString,
 } from "$lib/server/api";
 import { db } from "$lib/server/db";
+import { requireOwnedResource } from "$lib/server/ownership";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -54,7 +55,7 @@ export const POST: RequestHandler = async (event) => {
       gameRecordId,
       title: requireString(body, "title", "메모 제목"),
       body: requireString(body, "body", "메모 본문"),
-      tags: optionalJson(body, "tags"),
+      tags: optionalPrismaJson(body, "tags"),
     },
   });
 
@@ -65,6 +66,13 @@ export const PATCH: RequestHandler = async (event) => {
   const session = await requireGoogleApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "메모 ID");
+  await requireOwnedResource(
+    db.gameNote,
+    session.user.id,
+    id,
+    "메모를 찾을 수 없습니다.",
+  );
+
   const gameRecordId = await verifyOwnedGameRecord(
     session.user.id,
     optionalString(body, "gameRecordId"),
@@ -76,7 +84,7 @@ export const PATCH: RequestHandler = async (event) => {
       gameRecordId,
       title: optionalString(body, "title"),
       body: optionalString(body, "body"),
-      tags: optionalJson(body, "tags"),
+      tags: optionalPrismaJson(body, "tags"),
     },
   });
 
@@ -87,6 +95,13 @@ export const DELETE: RequestHandler = async (event) => {
   const session = await requireGoogleApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "메모 ID");
+
+  await requireOwnedResource(
+    db.gameNote,
+    session.user.id,
+    id,
+    "메모를 찾을 수 없습니다.",
+  );
 
   await db.gameNote.delete({ where: { id, userId: session.user.id } });
 

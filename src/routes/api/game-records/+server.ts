@@ -1,13 +1,15 @@
+import { Prisma } from "@prisma/client";
 import { requireGoogleApiSession } from "$lib/server/auth";
 import {
   optionalDate,
   optionalInt,
-  optionalJson,
+  optionalPrismaJson,
   optionalString,
   readJsonObject,
   requireString,
 } from "$lib/server/api";
 import { db } from "$lib/server/db";
+import { requireOwnedResource } from "$lib/server/ownership";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -83,7 +85,12 @@ function parsePlayers(body: Record<string, unknown>) {
         player.ratingDelta === undefined || player.ratingDelta === null
           ? undefined
           : String(player.ratingDelta),
-      metadata: player.metadata,
+      metadata:
+        player.metadata === undefined
+          ? undefined
+          : player.metadata === null
+            ? Prisma.JsonNull
+            : (player.metadata as Prisma.InputJsonValue),
     };
   });
 }
@@ -116,7 +123,7 @@ export const POST: RequestHandler = async (event) => {
       endedAt: optionalDate(body, "endedAt"),
       tableName: optionalString(body, "tableName"),
       rounds: optionalInt(body, "rounds"),
-      metadata: optionalJson(body, "metadata"),
+      metadata: optionalPrismaJson(body, "metadata"),
       players: players ? { create: players } : undefined,
     },
     include: { players: { orderBy: { seat: "asc" } }, notes: true },
@@ -131,6 +138,13 @@ export const PATCH: RequestHandler = async (event) => {
   const id = requireString(body, "id", "대국 기록 ID");
   const players = parsePlayers(body);
 
+  await requireOwnedResource(
+    db.gameRecord,
+    session.user.id,
+    id,
+    "대국 기록을 찾을 수 없습니다.",
+  );
+
   const record = await db.$transaction(async (tx) => {
     await tx.gameRecord.update({
       where: { id, userId: session.user.id },
@@ -141,7 +155,7 @@ export const PATCH: RequestHandler = async (event) => {
         endedAt: optionalDate(body, "endedAt"),
         tableName: optionalString(body, "tableName"),
         rounds: optionalInt(body, "rounds"),
-        metadata: optionalJson(body, "metadata"),
+        metadata: optionalPrismaJson(body, "metadata"),
       },
     });
 
@@ -165,6 +179,13 @@ export const DELETE: RequestHandler = async (event) => {
   const session = await requireGoogleApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "대국 기록 ID");
+
+  await requireOwnedResource(
+    db.gameRecord,
+    session.user.id,
+    id,
+    "대국 기록을 찾을 수 없습니다.",
+  );
 
   await db.gameRecord.delete({ where: { id, userId: session.user.id } });
 

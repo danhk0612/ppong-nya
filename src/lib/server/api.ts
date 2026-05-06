@@ -1,7 +1,14 @@
+import { Prisma } from "@prisma/client";
 import { error, type RequestEvent } from "@sveltejs/kit";
 
 export async function readJsonObject(event: RequestEvent) {
-  const body = await event.request.json();
+  let body: unknown;
+
+  try {
+    body = await event.request.json();
+  } catch {
+    error(400, "유효한 JSON 본문이 필요합니다.");
+  }
 
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     error(400, "JSON 객체 본문이 필요합니다.");
@@ -74,4 +81,18 @@ export function optionalJson(body: Record<string, unknown>, key: string) {
   const value = body[key];
 
   return value === undefined ? undefined : value;
+}
+
+export function optionalPrismaJson(body: Record<string, unknown>, key: string) {
+  const value = optionalJson(body, key);
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
+}
+
+export function prismaJsonOrNull(body: Record<string, unknown>, key: string) {
+  return optionalPrismaJson(body, key) ?? Prisma.JsonNull;
 }
