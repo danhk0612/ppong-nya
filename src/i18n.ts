@@ -1,10 +1,9 @@
 import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 
 import { triggerRelayout } from "./utils";
 
-const DEBUG = process.env.NODE_ENV === "development" && sessionStorage.i18nDebug;
+const DEBUG = import.meta.env.DEV && typeof sessionStorage !== "undefined" && sessionStorage.i18nDebug;
 
 if (DEBUG) {
   sessionStorage.removeItem("__i18nMissingKeys");
@@ -28,13 +27,12 @@ i18n
     },
   })
   .use(LanguageDetector)
-  .use(initReactI18next) // passes i18n down to react-i18next
   .init({
     lowerCaseLng: true,
     fallbackLng: "zh-hans",
     defaultNS: "default",
     debug: DEBUG,
-    whitelist: ["ja", "zh-hans", "en", "ko"],
+    supportedLngs: ["ja", "zh-hans", "en", "ko"],
     detection: {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],
@@ -67,8 +65,7 @@ i18n
     },
   });
 
-if ("document" in global) {
-  // Fix error in node
+if (typeof document !== "undefined") {
   i18n.on("languageChanged", function () {
     document.documentElement.lang = i18n.language;
     triggerRelayout();

@@ -1,0 +1,42 @@
+<script lang="ts">
+  import "../app.css";
+  import { primaryNavigation } from "$lib/navigation";
+</script>
+
+<svelte:head>
+  <title>ppong-nya</title>
+  <meta
+    name="description"
+    content="ppong-nya는 마작 전적, 랭킹, 통계를 한눈에 살펴보기 위한 새로운 SvelteKit 홈입니다."
+  />
+</svelte:head>
+
+<div class="min-h-screen bg-slate-50 text-slate-950">
+  <header class="sticky top-0 z-20 border-b border-white/60 bg-white/85 backdrop-blur">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="기본 내비게이션">
+      <a class="flex items-center gap-3 font-semibold tracking-tight" href="/">
+        <span class="grid h-10 w-10 place-items-center rounded-2xl bg-pink-500 text-lg text-white shadow-lg shadow-pink-200">
+          にゃ
+        </span>
+        <span class="text-xl">ppong-nya</span>
+      </a>
+
+      <div class="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
+        {#each primaryNavigation as item}
+          <a class="transition hover:text-pink-600" href={item.href}>{item.label}</a>
+        {/each}
+      </div>
+
+      <a
+        class="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2"
+        href="/login"
+      >
+        로그인
+      </a>
+    </nav>
+  </header>
+
+  <main>
+    <slot />
+  </main>
+</div>

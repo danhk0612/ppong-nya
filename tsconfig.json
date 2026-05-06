@@ -1,21 +1,14 @@
 {
-  "include": ["./src/**/*"],
+  "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
-    "allowSyntheticDefaultImports": true,
-    "useUnknownInCatchVariables": false,
-    "moduleResolution": "node",
-    "target": "es2017",
-    "strict": true,
     "allowJs": true,
-    "skipLibCheck": true,
+    "checkJs": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "esnext",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "lib": ["dom", "es2015", "es2017", "DOM", "webworker"],
-    "noFallthroughCasesInSwitch": true
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "moduleResolution": "bundler"
   }
 }
