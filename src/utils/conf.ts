@@ -4,6 +4,8 @@ import dayjs from "dayjs";
 const domain =
   sessionStorage.getItem("overrideDomain") || localStorage.getItem("overrideDomain") || window.location.hostname;
 
+const PPONG_NYA_DOMAIN = "ppong-nya.com";
+
 export const CONFIGURATIONS = {
   DEFAULT: {
     apiSuffix: process.env.NODE_ENV === "development" ? "api-test/v2/pl4/" : "api/v2/pl4/",
@@ -28,40 +30,17 @@ export const CONFIGURATIONS = {
     availableModes: [GameMode.王座, GameMode.玉, GameMode.金, GameMode.王东, GameMode.玉东, GameMode.金东],
     modePreference: [GameMode.王座, GameMode.玉, GameMode.王东, GameMode.玉东, GameMode.金, GameMode.金东],
     dateMin: dayjs("2019-08-23", "YYYY-MM-DD"),
-    siteTitle: "雀魂牌谱屋",
-    canonicalDomain: "amae-koromo.sapk.ch",
+    siteTitle: "퐁냐",
+    packageName: "ppong-nya",
+    canonicalDomain: PPONG_NYA_DOMAIN,
     showTopNotice: true,
-    mirrorUrl: "https://saki.sapk.ch/",
-    rootClassName: "koromo",
-    rankColors: ["#28a745", "#17a2b8", "#6c757d", "#dc3545"],
+    mirrorUrl: "https://ppong-nya.com/",
+    rootClassName: "ppong-nya",
+    rankColors: ["#ec4899", "#8b5cf6", "#0ea5e9", "#f97316"],
     maskedGameLink: true,
   },
-  ikeda: {
-    apiSuffix: "api/v2/pl3/",
-    features: {
-      ranking: [GameMode.三王座, GameMode.三玉, GameMode.三金, GameMode.三王东, GameMode.三玉东, GameMode.三金东],
-      statistics: true,
-      estimatedStableLevel: true,
-      contestTools: false,
-      statisticsSubPages: {
-        rankBySeat: true,
-        dataByRank: [GameMode.三王座, GameMode.三玉, GameMode.三金, GameMode.三王东, GameMode.三玉东, GameMode.三金东],
-        fanStats: true,
-        numPlayerStats: true,
-      },
-      aiReview: false,
-    },
-    availableModes: [GameMode.三王座, GameMode.三玉, GameMode.三金, GameMode.三王东, GameMode.三玉东, GameMode.三金东],
-    modePreference: [GameMode.三王座, GameMode.三玉, GameMode.三王东, GameMode.三玉东, GameMode.三金, GameMode.三金东],
-    dateMin: dayjs("2019-11-29", "YYYY-MM-DD"),
-    siteTitle: "雀魂牌谱屋·三麻",
-    canonicalDomain: "ikeda.sapk.ch",
-    mirrorUrl: "https://momoko.sapk.ch/",
-    rankColors: ["#28a745", "#6c757d", "#dc3545"],
-    rootClassName: "yuuki",
-  },
   contest: {
-    apiSuffix: (s: string) => `api/contest/${s}/`,
+    apiSuffix: "api/contest/",
     features: {
       ranking: false as const,
       rankingGroups: null,
@@ -115,12 +94,9 @@ function mergeDeep<T extends { [key: string]: any }>(...objects: Partial<T>[]): 
 }
 
 const ConfBase: Partial<Configuration> = (() => {
-  if (/^(ikeda|momoko)\./i.test(domain)) {
-    return CONFIGURATIONS.ikeda;
-  }
-  const m = /^([^.]+)\.contest\./i.exec(domain);
-  if (m) {
-    return { ...CONFIGURATIONS.contest, apiSuffix: CONFIGURATIONS.contest.apiSuffix(m[1]) };
+  const contestMatch = /^([^.]+)\.contest\./i.exec(domain);
+  if (contestMatch) {
+    return { ...CONFIGURATIONS.contest, apiSuffix: `api/contest/${contestMatch[1]}/` };
   }
   return CONFIGURATIONS.DEFAULT;
 })();

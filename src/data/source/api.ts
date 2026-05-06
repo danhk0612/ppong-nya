@@ -4,10 +4,10 @@ import Conf from "../../utils/conf";
 import { savePreference } from "../../utils/preference";
 
 const DATA_MIRRORS = [
-  "https://5-data.amae-koromo.com/",
-  "https://1.data.amae-koromo.com/",
-  "https://2.data.amae-koromo.com/",
-  "https://4.data.amae-koromo.com/",
+  "https://data.ppong-nya.com/",
+  "https://1.data.ppong-nya.com/",
+  "https://2.data.ppong-nya.com/",
+  "https://4.data.ppong-nya.com/",
 ];
 const PROBE_TIMEOUT = 15000;
 
