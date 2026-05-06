@@ -1,0 +1,12 @@
+.git
+.gitignore
+.svelte-kit
+build
+node_modules
+npm-debug.log*
+Dockerfile
+docker-compose.yml
+docs
+.env
+.env.*
+!.env.example
