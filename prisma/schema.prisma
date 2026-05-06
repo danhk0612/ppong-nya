@@ -17,29 +17,33 @@ model User {
   createdAt     DateTime  @default(now()) @db.DateTime(3)
   updatedAt     DateTime  @updatedAt @db.DateTime(3)
 
-  accounts    Account[]
-  sessions    Session[]
-  gameRecords GameRecord[]
-  preferences UserPreference[]
-  savedItems  SavedItem[]
-  auditLogs   AuditLog[]
+  accounts         Account[]
+  sessions         Session[]
+  gameRecords      GameRecord[]
+  preferences      UserPreference[]
+  favoritePlayers  FavoritePlayer[]
+  gameNotes        GameNote[]
+  searchHistory    SearchHistory[]
+  statisticsCaches StatisticsCache[]
+  savedItems       SavedItem[]
+  auditLogs        AuditLog[]
 
   @@map("users")
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String
-  type              String  @db.VarChar(64)
-  provider          String  @db.VarChar(64)
-  providerAccountId String  @db.VarChar(191)
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  type              String   @db.VarChar(64)
+  provider          String   @db.VarChar(64)
+  providerAccountId String   @db.VarChar(191)
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
   expires_at        Int?
-  token_type        String? @db.VarChar(64)
-  scope             String? @db.Text
-  id_token          String? @db.Text
-  session_state     String? @db.VarChar(255)
+  token_type        String?  @db.VarChar(64)
+  scope             String?  @db.Text
+  id_token          String?  @db.Text
+  session_state     String?  @db.VarChar(255)
   createdAt         DateTime @default(now()) @db.DateTime(3)
   updatedAt         DateTime @updatedAt @db.DateTime(3)
 
@@ -76,10 +80,11 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+/// User-owned game records imported from external sources or manually created.
 model GameRecord {
   id         String    @id @default(cuid())
-  userId     String?
-  externalId String?   @unique @db.VarChar(191)
+  userId     String
+  externalId String?   @db.VarChar(191)
   mode       GameMode
   startedAt  DateTime  @db.DateTime(3)
   endedAt    DateTime? @db.DateTime(3)
@@ -89,9 +94,11 @@ model GameRecord {
   createdAt  DateTime  @default(now()) @db.DateTime(3)
   updatedAt  DateTime  @updatedAt @db.DateTime(3)
 
-  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   players Player[]
+  notes   GameNote[]
 
+  @@unique([userId, externalId])
   @@index([userId])
   @@index([mode, startedAt])
   @@map("game_records")
@@ -119,6 +126,7 @@ model Player {
   @@map("players")
 }
 
+/// User settings such as locale, default game mode, visible columns, and UI options.
 model UserPreference {
   id        String   @id @default(cuid())
   userId    String
@@ -131,6 +139,81 @@ model UserPreference {
 
   @@unique([userId, key])
   @@map("user_preferences")
+}
+
+/// User-owned favorite players for quick access and tracking.
+model FavoritePlayer {
+  id          String   @id @default(cuid())
+  userId      String
+  playerId    String   @db.VarChar(191)
+  nickname    String   @db.VarChar(120)
+  displayName String?  @db.VarChar(120)
+  server      String?  @db.VarChar(64)
+  memo        String?  @db.Text
+  metadata    Json?
+  createdAt   DateTime @default(now()) @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, playerId])
+  @@index([userId, nickname])
+  @@map("favorite_players")
+}
+
+/// User-owned notes attached to a game record or kept as standalone study notes.
+model GameNote {
+  id           String   @id @default(cuid())
+  userId       String
+  gameRecordId String?
+  title        String   @db.VarChar(200)
+  body         String   @db.Text
+  tags         Json?
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @db.DateTime(3)
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameRecord GameRecord? @relation(fields: [gameRecordId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([gameRecordId])
+  @@map("game_notes")
+}
+
+/// User-owned search history for players, records, rankings, and statistics queries.
+model SearchHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  query       String   @db.VarChar(255)
+  scope       String?  @db.VarChar(80)
+  filters     Json?
+  resultCount Int?
+  createdAt   DateTime @default(now()) @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([scope])
+  @@map("search_history")
+}
+
+/// User-owned cached statistics snapshots derived from records and searches.
+model StatisticsCache {
+  id        String    @id @default(cuid())
+  userId    String
+  cacheKey  String    @db.VarChar(191)
+  scope     String    @db.VarChar(80)
+  payload   Json
+  expiresAt DateTime? @db.DateTime(3)
+  createdAt DateTime  @default(now()) @db.DateTime(3)
+  updatedAt DateTime  @updatedAt @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cacheKey])
+  @@index([userId, scope])
+  @@index([expiresAt])
+  @@map("statistics_caches")
 }
 
 model SavedItem {
