@@ -1,6 +1,9 @@
 <script lang="ts">
   import "../app.css";
   import { primaryNavigation } from "$lib/navigation";
+  import AuthNavigation from "$lib/components/AuthNavigation.svelte";
+
+  let { data } = $props();
 </script>
 
 <svelte:head>
@@ -27,12 +30,7 @@
         {/each}
       </div>
 
-      <a
-        class="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2"
-        href="/login"
-      >
-        로그인
-      </a>
+      <AuthNavigation session={data.session} />
     </nav>
   </header>
 
