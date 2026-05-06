@@ -3,6 +3,8 @@
   import { onMount } from "svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
+  import PageSection from "$lib/components/PageSection.svelte";
+  import SummaryTile from "$lib/components/SummaryTile.svelte";
   import StatusBlock from "$lib/components/StatusBlock.svelte";
   import Table from "$lib/components/Table.svelte";
   import { formatDateTime, formatNumber, ko } from "$lib/i18n";
@@ -38,7 +40,7 @@
   <meta name="description" content="ppong-nya에 저장한 대국 기록 상세를 확인합니다." />
 </svelte:head>
 
-<section class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+<PageSection size="content">
   <Button href="/records" variant="ghost" size="sm">← 대국 목록</Button>
 
   {#if loading}
@@ -55,18 +57,9 @@
         <p class="mt-4 text-sm text-ink-300">{formatDateTime(record.startedAt)} · {record.rounds == null ? ko.account.records.noRounds : formatNumber(record.rounds)}국</p>
       </div>
       <div class="grid gap-4 p-5 sm:grid-cols-3 sm:p-6">
-        <div class="rounded-3xl bg-cream-100 p-5">
-          <p class="text-sm font-black text-ink-500">모드</p>
-          <p class="mt-2 text-xl font-black text-ink-950">{record.mode}</p>
-        </div>
-        <div class="rounded-3xl bg-cream-100 p-5">
-          <p class="text-sm font-black text-ink-500">국 수</p>
-          <p class="mt-2 text-xl font-black text-ink-950">{record.rounds == null ? ko.account.records.noRounds : formatNumber(record.rounds)}</p>
-        </div>
-        <div class="rounded-3xl bg-cream-100 p-5">
-          <p class="text-sm font-black text-ink-500">플레이어</p>
-          <p class="mt-2 text-xl font-black text-ink-950">{record.players.length ? `${record.players.length}명` : "-"}</p>
-        </div>
+        <SummaryTile label="모드" value={record.mode} />
+        <SummaryTile label="국 수" value={record.rounds == null ? ko.account.records.noRounds : formatNumber(record.rounds)} />
+        <SummaryTile label="플레이어" value={record.players.length ? `${record.players.length}명` : "-"} />
       </div>
     </Card>
 
@@ -84,4 +77,4 @@
       <StatusBlock class="mt-6" title="플레이어 정보가 없습니다" description="현재 저장된 MVP 대국에는 플레이어 상세가 없을 수 있습니다." />
     {/if}
   {/if}
-</section>
+</PageSection>

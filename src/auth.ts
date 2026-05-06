@@ -8,7 +8,7 @@ import { privateEnv, productionOrigin } from "$lib/server/env";
 export const { handle } = SvelteKitAuth({
   adapter: PrismaAdapter(db),
   secret: privateEnv.authSecret,
-  trustHost: !dev,
+  trustHost: true,
   useSecureCookies: !dev,
   providers: [
     Google({
