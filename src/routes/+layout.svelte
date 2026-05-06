@@ -7,10 +7,10 @@
 </script>
 
 <svelte:head>
-  <title>ppong-nya</title>
+  <title>퐁냐 | ppong-nya</title>
   <meta
     name="description"
-    content="ppong-nya는 마작 전적, 랭킹, 통계를 한눈에 살펴보기 위한 새로운 SvelteKit 홈입니다."
+    content="퐁냐(ppong-nya)는 작혼 전적, 랭킹, 통계를 한눈에 살펴보는 한국어 서비스입니다."
   />
 </svelte:head>
 
@@ -21,7 +21,7 @@
         <span class="grid h-10 w-10 place-items-center rounded-2xl bg-pink-500 text-lg text-white shadow-lg shadow-pink-200">
           にゃ
         </span>
-        <span class="text-xl">ppong-nya</span>
+        <span class="text-xl">퐁냐</span>
       </a>
 
       <div class="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">

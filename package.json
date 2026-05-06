@@ -1,8 +1,8 @@
 {
   "name": "ppong-nya",
   "version": "1.0.0",
-  "homepage": "https://amae-koromo.sapk.ch",
-  "description": "ppong-nya landing app built with SvelteKit",
+  "homepage": "https://ppong-nya.com",
+  "description": "퐁냐(ppong-nya): Korean Mahjong Soul records, rankings, and statistics hub built with SvelteKit",
   "keywords": [
     "sveltekit",
     "mahjong",
