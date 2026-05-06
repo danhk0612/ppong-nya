@@ -1,11 +1,12 @@
 import { requireGoogleApiSession } from "$lib/server/auth";
 import {
-  optionalJson,
+  optionalPrismaJson,
   optionalString,
   readJsonObject,
   requireString,
 } from "$lib/server/api";
 import { db } from "$lib/server/db";
+import { requireOwnedResource } from "$lib/server/ownership";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -34,14 +35,14 @@ export const POST: RequestHandler = async (event) => {
       displayName: optionalString(body, "displayName"),
       server: optionalString(body, "server"),
       memo: optionalString(body, "memo"),
-      metadata: optionalJson(body, "metadata"),
+      metadata: optionalPrismaJson(body, "metadata"),
     },
     update: {
       nickname,
       displayName: optionalString(body, "displayName"),
       server: optionalString(body, "server"),
       memo: optionalString(body, "memo"),
-      metadata: optionalJson(body, "metadata"),
+      metadata: optionalPrismaJson(body, "metadata"),
     },
   });
 
@@ -53,6 +54,13 @@ export const PATCH: RequestHandler = async (event) => {
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "즐겨찾기 ID");
 
+  await requireOwnedResource(
+    db.favoritePlayer,
+    session.user.id,
+    id,
+    "즐겨찾기를 찾을 수 없습니다.",
+  );
+
   const favorite = await db.favoritePlayer.update({
     where: { id, userId: session.user.id },
     data: {
@@ -61,7 +69,7 @@ export const PATCH: RequestHandler = async (event) => {
       displayName: optionalString(body, "displayName"),
       server: optionalString(body, "server"),
       memo: optionalString(body, "memo"),
-      metadata: optionalJson(body, "metadata"),
+      metadata: optionalPrismaJson(body, "metadata"),
     },
   });
 
@@ -72,6 +80,13 @@ export const DELETE: RequestHandler = async (event) => {
   const session = await requireGoogleApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "즐겨찾기 ID");
+
+  await requireOwnedResource(
+    db.favoritePlayer,
+    session.user.id,
+    id,
+    "즐겨찾기를 찾을 수 없습니다.",
+  );
 
   await db.favoritePlayer.delete({ where: { id, userId: session.user.id } });
 

@@ -44,6 +44,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "verify:user-apis": "node scripts/verify-user-apis.mjs"
   }
 }
