@@ -8,38 +8,38 @@ datasource db {
 }
 
 model User {
-  id            String           @id @default(cuid())
-  email         String           @unique @db.VarChar(255)
-  emailVerified DateTime?        @db.DateTime(3)
-  name          String?          @db.VarChar(120)
-  avatarUrl     String?          @db.VarChar(2048)
-  role          UserRole         @default(USER)
-  createdAt     DateTime         @default(now()) @db.DateTime(3)
-  updatedAt     DateTime         @updatedAt @db.DateTime(3)
+  id            String    @id @default(cuid())
+  name          String?   @db.VarChar(120)
+  email         String    @unique @db.VarChar(255)
+  emailVerified DateTime? @db.DateTime(3)
+  image         String?   @db.VarChar(2048)
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now()) @db.DateTime(3)
+  updatedAt     DateTime  @updatedAt @db.DateTime(3)
 
-  accounts      Account[]
-  sessions      Session[]
-  gameRecords   GameRecord[]
-  preferences   UserPreference[]
-  savedItems    SavedItem[]
-  auditLogs     AuditLog[]
+  accounts    Account[]
+  sessions    Session[]
+  gameRecords GameRecord[]
+  preferences UserPreference[]
+  savedItems  SavedItem[]
+  auditLogs   AuditLog[]
 
   @@map("users")
 }
 
 model Account {
-  id                String   @id @default(cuid())
+  id                String  @id @default(cuid())
   userId            String
-  provider          String   @db.VarChar(64)
-  providerAccountId String   @db.VarChar(191)
-  type              String   @db.VarChar(64)
-  accessToken       String?  @db.Text
-  refreshToken      String?  @db.Text
-  expiresAt         Int?
-  tokenType         String?  @db.VarChar(64)
-  scope             String?  @db.Text
-  idToken           String?  @db.Text
-  sessionState      String?  @db.VarChar(255)
+  type              String  @db.VarChar(64)
+  provider          String  @db.VarChar(64)
+  providerAccountId String  @db.VarChar(191)
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String? @db.VarChar(64)
+  scope             String? @db.Text
+  id_token          String? @db.Text
+  session_state     String? @db.VarChar(255)
   createdAt         DateTime @default(now()) @db.DateTime(3)
   updatedAt         DateTime @updatedAt @db.DateTime(3)
 
@@ -54,7 +54,7 @@ model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @db.VarChar(191)
   userId       String
-  expiresAt    DateTime @db.DateTime(3)
+  expires      DateTime @db.DateTime(3)
   ipAddress    String?  @db.VarChar(45)
   userAgent    String?  @db.VarChar(512)
   createdAt    DateTime @default(now()) @db.DateTime(3)
@@ -63,22 +63,31 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([expiresAt])
+  @@index([expires])
   @@map("sessions")
 }
 
+model VerificationToken {
+  identifier String   @db.VarChar(191)
+  token      String   @unique @db.VarChar(191)
+  expires    DateTime @db.DateTime(3)
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
 model GameRecord {
-  id            String     @id @default(cuid())
-  userId        String?
-  externalId    String?    @unique @db.VarChar(191)
-  mode          GameMode
-  startedAt     DateTime   @db.DateTime(3)
-  endedAt       DateTime?  @db.DateTime(3)
-  tableName     String?    @db.VarChar(120)
-  rounds        Int?
-  metadata      Json?
-  createdAt     DateTime   @default(now()) @db.DateTime(3)
-  updatedAt     DateTime   @updatedAt @db.DateTime(3)
+  id         String    @id @default(cuid())
+  userId     String?
+  externalId String?   @unique @db.VarChar(191)
+  mode       GameMode
+  startedAt  DateTime  @db.DateTime(3)
+  endedAt    DateTime? @db.DateTime(3)
+  tableName  String?   @db.VarChar(120)
+  rounds     Int?
+  metadata   Json?
+  createdAt  DateTime  @default(now()) @db.DateTime(3)
+  updatedAt  DateTime  @updatedAt @db.DateTime(3)
 
   user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   players Player[]
@@ -89,18 +98,18 @@ model GameRecord {
 }
 
 model Player {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   gameRecordId String
   seat         Int
-  accountId    String?    @db.VarChar(191)
-  nickname     String     @db.VarChar(120)
-  rankLabel    String?    @db.VarChar(64)
+  accountId    String?  @db.VarChar(191)
+  nickname     String   @db.VarChar(120)
+  rankLabel    String?  @db.VarChar(64)
   score        Int
   placement    Int
-  ratingDelta  Decimal?   @db.Decimal(10, 3)
+  ratingDelta  Decimal? @db.Decimal(10, 3)
   metadata     Json?
-  createdAt    DateTime   @default(now()) @db.DateTime(3)
-  updatedAt    DateTime   @updatedAt @db.DateTime(3)
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @db.DateTime(3)
 
   gameRecord GameRecord @relation(fields: [gameRecordId], references: [id], onDelete: Cascade)
 
