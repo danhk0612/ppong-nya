@@ -48,5 +48,5 @@
 <section class="mx-auto grid max-w-7xl gap-4 px-4 pb-16 sm:px-6 lg:grid-cols-3 lg:px-8">
   <StatusBlock title="공통 상태" description="빈 화면, 로딩, 오류 상태를 같은 컴포넌트와 톤으로 표현해 화면 간 피드백을 통일합니다." />
   <StatusBlock tone="loading" title="모바일 우선" description="작은 화면에서 먼저 읽기 편한 단일 컬럼을 만들고, 넓은 화면에서 카드와 표를 확장합니다." />
-  <StatusBlock tone="empty" title="브랜드 토큰" description="Tailwind 테마에 ppong-nya 색상, 여백, 타이포그래피 기준을 정의했습니다." />
+  <StatusBlock tone="empty" title="브랜드 토큰" description="Tailwind 테마에 퐁냐 색상, 여백, 타이포그래피 기준을 정의했습니다." />
 </section>

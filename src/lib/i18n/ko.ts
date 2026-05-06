@@ -1,9 +1,9 @@
 export const ko = {
   app: {
     name: "퐁냐",
-    title: "퐁냐 | ppong-nya",
+    title: "퐁냐",
     description:
-      "퐁냐(ppong-nya)는 작혼 전적, 랭킹, 통계를 한눈에 살펴보는 한국어 서비스입니다.",
+      "퐁냐는 작혼 전적, 랭킹, 통계를 한눈에 살펴보는 한국어 서비스입니다.",
     navigationLabel: "기본 내비게이션",
     logoKana: "にゃ",
   },
@@ -18,13 +18,13 @@ export const ko = {
     userImageAlt: "로그인 사용자 프로필 이미지",
   },
   home: {
-    eyebrow: "SvelteKit으로 새롭게 시작하는 ppong-nya",
+    eyebrow: "SvelteKit으로 새롭게 시작하는 퐁냐",
     title: "마작 기록을 더 가볍고 빠르게 만나는 홈 화면",
     description:
-      "ppong-nya는 초기 MVP에서 한국어 단일 UI를 기본으로 제공하고, 향후 다국어 확장을 위해 한국어 리소스 구조를 유지합니다.",
+      "퐁냐는 초기 MVP에서 한국어 단일 UI를 기본으로 제공하고, 향후 다국어 확장을 위해 한국어 리소스 구조를 유지합니다.",
     loginCta: "로그인하고 시작하기",
     exploreCta: "기능 둘러보기",
-    dashboardEyebrow: "오늘의 ppong-nya",
+    dashboardEyebrow: "오늘의 퐁냐",
     dashboardTitle: "홈 대시보드",
     betaBadge: "베타",
     highlights: [
@@ -44,7 +44,7 @@ export const ko = {
         id: "records",
         label: "대국 기록",
         description:
-          "플레이어별 경기 흐름과 최근 대국 기록을 ppong-nya에서 이어갑니다.",
+          "플레이어별 경기 흐름과 최근 대국 기록을 퐁냐에서 이어갑니다.",
       },
       {
         id: "statistics",
@@ -67,19 +67,19 @@ export const ko = {
     ],
   },
   login: {
-    title: "로그인 | ppong-nya",
-    description: "Google OAuth로 ppong-nya에 로그인합니다.",
+    title: "로그인 | 퐁냐",
+    description: "Google OAuth로 퐁냐에 로그인합니다.",
     eyebrow: "Google OAuth 로그인",
-    heading: "ppong-nya 계정으로 시작하기",
+    heading: "퐁냐 계정으로 시작하기",
     body: "Google 계정으로 로그인하면 MariaDB에 사용자와 OAuth 계정 정보가 저장되고, 전적 저장 및 계정 관리 기능을 사용할 수 있습니다.",
     googleCta: "Google로 로그인",
-    googleCtaLabel: "Google 계정으로 ppong-nya에 로그인",
+    googleCtaLabel: "Google 계정으로 퐁냐에 로그인",
     envNotice:
       "OAuth 클라이언트에는 GOOGLE_CLIENT_ID와 GOOGLE_CLIENT_SECRET 환경 변수를 사용합니다.",
   },
   account: {
-    title: "계정 관리 | ppong-nya",
-    description: "ppong-nya 로그인 계정과 개인 데이터를 관리합니다.",
+    title: "계정 관리 | 퐁냐",
+    description: "퐁냐 로그인 계정과 개인 데이터를 관리합니다.",
     providerLabel: "Google 로그인 계정",
     unnamedUser: "이름 없는 사용자",
     userId: "사용자 ID",
@@ -99,7 +99,7 @@ export const ko = {
     noAccount: "연결된 OAuth 계정이 없습니다.",
     scopeTitle: "저장 데이터 범위",
     scopeDescription:
-      "ppong-nya는 사용자 설정, 즐겨찾기 플레이어, 대국 기록, 대국 메모, 검색 기록, 통계 캐시를 사용자 계정에 연결해 저장합니다. 이 화면은 우선 네 가지 CRUD API를 호출해 기본 데이터를 관리합니다.",
+      "퐁냐는 사용자 설정, 즐겨찾기 플레이어, 대국 기록, 대국 메모, 검색 기록, 통계 캐시를 사용자 계정에 연결해 저장합니다. 이 화면은 우선 네 가지 CRUD API를 호출해 기본 데이터를 관리합니다.",
     loading: "개인 데이터를 불러오는 중입니다...",
     unknownDataError: "데이터를 불러오지 못했습니다.",
     unknownRequestError: "요청을 처리하지 못했습니다.",
@@ -154,7 +154,7 @@ export const ko = {
     },
   },
   error: {
-    title: "오류가 발생했습니다 | ppong-nya",
+    title: "오류가 발생했습니다 | 퐁냐",
     heading: "오류가 발생했습니다",
     unknownStatus: "알 수 없는 오류",
     fallbackMessage:
