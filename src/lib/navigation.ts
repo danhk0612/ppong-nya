@@ -8,6 +8,6 @@ export type NavItem = {
 export const primaryNavigation: NavItem[] = [
   { label: ko.nav.home, href: "/" },
   { label: ko.nav.ranking, href: "#ranking" },
-  { label: ko.nav.records, href: "#records" },
-  { label: ko.nav.tools, href: "#tools" }
+  { label: ko.nav.records, href: "/records" },
+  { label: ko.nav.tools, href: "#tools" },
 ];

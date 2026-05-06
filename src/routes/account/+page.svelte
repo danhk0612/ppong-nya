@@ -1,5 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Button from "$lib/components/Button.svelte";
+  import Card from "$lib/components/Card.svelte";
+  import Input from "$lib/components/Input.svelte";
+  import Select from "$lib/components/Select.svelte";
+  import StatusBlock from "$lib/components/StatusBlock.svelte";
+  import Toast from "$lib/components/Toast.svelte";
   import {
     createUserDataApi,
     type FavoritePlayerItem,
@@ -125,154 +131,149 @@
   <meta name="description" content={ko.account.description} />
 </svelte:head>
 
-<section class="mx-auto max-w-6xl px-6 py-16">
-  <div class="rounded-[2rem] border border-white/70 bg-white p-8 shadow-xl shadow-slate-200">
-    <div class="flex flex-col gap-6 sm:flex-row sm:items-center">
-      {#if user.image}
-        <img class="h-24 w-24 rounded-3xl object-cover" src={user.image} alt={ko.nav.account} referrerpolicy="no-referrer" />
-      {:else}
-        <div class="grid h-24 w-24 place-items-center rounded-3xl bg-pink-100 text-3xl font-black text-pink-700" aria-hidden="true">
-          {user.email?.slice(0, 1).toUpperCase() ?? "?"}
+<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+  <Card class="overflow-hidden" padded={false}>
+    <div class="bg-ink-950 p-5 text-white sm:p-8">
+      <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
+        {#if user.image}
+          <img class="h-20 w-20 rounded-3xl object-cover sm:h-24 sm:w-24" src={user.image} alt={ko.nav.account} referrerpolicy="no-referrer" />
+        {:else}
+          <div class="grid h-20 w-20 place-items-center rounded-3xl bg-brand-100 text-3xl font-black text-brand-700 sm:h-24 sm:w-24" aria-hidden="true">
+            {user.email?.slice(0, 1).toUpperCase() ?? "?"}
+          </div>
+        {/if}
+        <div class="min-w-0">
+          <p class="text-sm font-black text-brand-200">{ko.account.providerLabel}</p>
+          <h1 class="mt-2 truncate text-3xl font-black tracking-tight sm:text-4xl">{user.name ?? ko.account.unnamedUser}</h1>
+          <p class="mt-2 break-all text-ink-300">{user.email}</p>
         </div>
-      {/if}
-      <div>
-        <p class="text-sm font-semibold text-pink-600">{ko.account.providerLabel}</p>
-        <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950">{user.name ?? ko.account.unnamedUser}</h1>
-        <p class="mt-2 text-slate-600">{user.email}</p>
       </div>
     </div>
 
-    <dl class="mt-10 grid gap-4 sm:grid-cols-2">
-      <div class="rounded-2xl bg-slate-50 p-5">
-        <dt class="text-sm font-semibold text-slate-500">{ko.account.userId}</dt>
-        <dd class="mt-2 break-all font-mono text-sm text-slate-900">{user.id}</dd>
+    <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+      <div class="rounded-3xl bg-cream-100 p-5">
+        <dt class="text-sm font-black text-ink-500">{ko.account.userId}</dt>
+        <dd class="mt-2 break-all font-mono text-sm text-ink-900">{user.id}</dd>
       </div>
-      <div class="rounded-2xl bg-slate-50 p-5">
-        <dt class="text-sm font-semibold text-slate-500">{ko.account.role}</dt>
-        <dd class="mt-2 font-semibold text-slate-900">{user.role}</dd>
+      <div class="rounded-3xl bg-cream-100 p-5">
+        <dt class="text-sm font-black text-ink-500">{ko.account.role}</dt>
+        <dd class="mt-2 font-black text-ink-900">{user.role}</dd>
       </div>
-    </dl>
+    </div>
+  </Card>
+
+  <Card class="mt-6 border-brand-100 bg-brand-50/80" title={ko.account.scopeTitle}>
+    <p class="text-sm leading-6 text-ink-600">{ko.account.scopeDescription}</p>
+  </Card>
+
+  <div class="mt-6 grid gap-3">
+    <Toast message={message} tone="success" />
+    <Toast message={errorMessage} tone="error" />
   </div>
 
-  <div class="mt-8 rounded-[2rem] border border-pink-100 bg-pink-50 p-6">
-    <h2 class="text-xl font-black text-slate-950">{ko.account.scopeTitle}</h2>
-    <p class="mt-2 text-sm leading-6 text-slate-600">{ko.account.scopeDescription}</p>
-  </div>
-
-  {#if message}
-    <p class="mt-6 rounded-2xl bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700">{message}</p>
-  {/if}
-  {#if errorMessage}
-    <p class="mt-6 rounded-2xl bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700">{errorMessage}</p>
+  {#if loading}
+    <StatusBlock class="mt-6" tone="loading" title={ko.account.loading} description="저장된 개인 데이터를 안전하게 불러오고 있습니다." />
   {/if}
 
-  <div class="mt-8 grid gap-6 lg:grid-cols-2">
-    <section class="rounded-[2rem] border border-white/70 bg-white p-6 shadow-lg shadow-slate-200">
-      <h2 class="text-xl font-black text-slate-950">{ko.account.preferences.title}</h2>
-      <form class="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]" onsubmit={(event) => { event.preventDefault(); void submitPreference(); }}>
-        <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={preferenceKey} placeholder={ko.account.preferences.keyPlaceholder} aria-label={ko.account.preferences.keyPlaceholder} required />
-        <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={preferenceValue} placeholder={ko.account.preferences.valuePlaceholder} aria-label={ko.account.preferences.valuePlaceholder} required />
-        <button class="rounded-2xl bg-pink-500 px-5 py-3 font-semibold text-white hover:bg-pink-600" aria-label={ko.account.preferences.save}>{ko.account.preferences.save}</button>
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <Card title={ko.account.preferences.title}>
+      <form class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]" onsubmit={(event) => { event.preventDefault(); void submitPreference(); }}>
+        <Input bind:value={preferenceKey} placeholder={ko.account.preferences.keyPlaceholder} aria-label={ko.account.preferences.keyPlaceholder} required />
+        <Input bind:value={preferenceValue} placeholder={ko.account.preferences.valuePlaceholder} aria-label={ko.account.preferences.valuePlaceholder} required />
+        <Button class="w-full sm:w-auto" type="submit" aria-label={ko.account.preferences.save}>{ko.account.preferences.save}</Button>
       </form>
-      <div class="mt-5 divide-y divide-slate-100">
+      <div class="mt-5 divide-y divide-ink-100">
         {#each preferences as preference}
-          <article class="flex items-center justify-between gap-4 py-3">
-            <div>
-              <p class="font-semibold text-slate-900">{preference.key}</p>
-              <p class="text-sm text-slate-500">{JSON.stringify(preference.value)}</p>
+          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-center xs:justify-between">
+            <div class="min-w-0">
+              <p class="font-black text-ink-900">{preference.key}</p>
+              <p class="break-all text-sm text-ink-500">{JSON.stringify(preference.value)}</p>
             </div>
-            <button class="text-sm font-semibold text-rose-600" aria-label={ko.account.preferences.delete} onclick={() => removeItem(() => api.deletePreference(preference.id), ko.account.messages.preferenceDeleted)}>{ko.account.preferences.delete}</button>
+            <Button variant="ghost" size="sm" aria-label={ko.account.preferences.delete} onclick={() => removeItem(() => api.deletePreference(preference.id), ko.account.messages.preferenceDeleted)}>{ko.account.preferences.delete}</Button>
           </article>
         {:else}
-          <p class="py-4 text-sm text-slate-500">{ko.account.preferences.empty}</p>
+          <StatusBlock title={ko.account.preferences.empty} />
         {/each}
       </div>
-    </section>
+    </Card>
 
-    <section class="rounded-[2rem] border border-white/70 bg-white p-6 shadow-lg shadow-slate-200">
-      <h2 class="text-xl font-black text-slate-950">{ko.account.favorites.title}</h2>
-      <form class="mt-5 grid gap-3" onsubmit={(event) => { event.preventDefault(); void submitFavorite(); }}>
+    <Card title={ko.account.favorites.title}>
+      <form class="grid gap-3" onsubmit={(event) => { event.preventDefault(); void submitFavorite(); }}>
         <div class="grid gap-3 sm:grid-cols-2">
-          <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={favoritePlayerId} placeholder={ko.account.favorites.playerIdPlaceholder} aria-label={ko.account.favorites.playerIdPlaceholder} required />
-          <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={favoriteNickname} placeholder={ko.account.favorites.nicknamePlaceholder} aria-label={ko.account.favorites.nicknamePlaceholder} required />
-          <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={favoriteServer} placeholder={ko.account.favorites.serverPlaceholder} aria-label={ko.account.favorites.serverPlaceholder} />
-          <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={favoriteMemo} placeholder={ko.account.favorites.memoPlaceholder} aria-label={ko.account.favorites.memoPlaceholder} />
+          <Input bind:value={favoritePlayerId} placeholder={ko.account.favorites.playerIdPlaceholder} aria-label={ko.account.favorites.playerIdPlaceholder} required />
+          <Input bind:value={favoriteNickname} placeholder={ko.account.favorites.nicknamePlaceholder} aria-label={ko.account.favorites.nicknamePlaceholder} required />
+          <Input bind:value={favoriteServer} placeholder={ko.account.favorites.serverPlaceholder} aria-label={ko.account.favorites.serverPlaceholder} />
+          <Input bind:value={favoriteMemo} placeholder={ko.account.favorites.memoPlaceholder} aria-label={ko.account.favorites.memoPlaceholder} />
         </div>
-        <button class="rounded-2xl bg-pink-500 px-5 py-3 font-semibold text-white hover:bg-pink-600" aria-label={ko.account.favorites.save}>{ko.account.favorites.save}</button>
+        <Button class="w-full" type="submit" aria-label={ko.account.favorites.save}>{ko.account.favorites.save}</Button>
       </form>
-      <div class="mt-5 divide-y divide-slate-100">
+      <div class="mt-5 divide-y divide-ink-100">
         {#each favorites as favorite}
-          <article class="flex items-center justify-between gap-4 py-3">
+          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-center xs:justify-between">
             <div>
-              <p class="font-semibold text-slate-900">{favorite.nickname}</p>
-              <p class="text-sm text-slate-500">{favorite.playerId}{favorite.server ? ` · ${favorite.server}` : ""}</p>
+              <p class="font-black text-ink-900">{favorite.nickname}</p>
+              <p class="text-sm text-ink-500">{favorite.playerId}{favorite.server ? ` · ${favorite.server}` : ""}</p>
             </div>
-            <button class="text-sm font-semibold text-rose-600" aria-label={ko.account.favorites.delete} onclick={() => removeItem(() => api.deleteFavorite(favorite.id), ko.account.messages.favoriteDeleted)}>{ko.account.favorites.delete}</button>
+            <Button variant="ghost" size="sm" aria-label={ko.account.favorites.delete} onclick={() => removeItem(() => api.deleteFavorite(favorite.id), ko.account.messages.favoriteDeleted)}>{ko.account.favorites.delete}</Button>
           </article>
         {:else}
-          <p class="py-4 text-sm text-slate-500">{ko.account.favorites.empty}</p>
+          <StatusBlock title={ko.account.favorites.empty} />
         {/each}
       </div>
-    </section>
+    </Card>
 
-    <section class="rounded-[2rem] border border-white/70 bg-white p-6 shadow-lg shadow-slate-200">
-      <h2 class="text-xl font-black text-slate-950">{ko.account.records.title}</h2>
-      <form class="mt-5 grid gap-3" onsubmit={(event) => { event.preventDefault(); void submitGameRecord(); }}>
+    <Card title={ko.account.records.title}>
+      <form class="grid gap-3" onsubmit={(event) => { event.preventDefault(); void submitGameRecord(); }}>
         <div class="grid gap-3 sm:grid-cols-3">
-          <select class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={recordMode} aria-label={ko.account.records.title}>
+          <Select bind:value={recordMode} aria-label={ko.account.records.title}>
             <option value="YONMA">{ko.account.records.yonma}</option>
             <option value="SANMA">{ko.account.records.sanma}</option>
-          </select>
-          <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={recordTableName} placeholder={ko.account.records.tablePlaceholder} aria-label={ko.account.records.tablePlaceholder} />
-          <input class="rounded-2xl border border-slate-200 px-4 py-3" type="number" min="1" bind:value={recordRounds} placeholder={ko.account.records.roundsPlaceholder} aria-label={ko.account.records.roundsPlaceholder} />
+          </Select>
+          <Input bind:value={recordTableName} placeholder={ko.account.records.tablePlaceholder} aria-label={ko.account.records.tablePlaceholder} />
+          <Input type="number" min="1" bind:value={recordRounds} placeholder={ko.account.records.roundsPlaceholder} aria-label={ko.account.records.roundsPlaceholder} />
         </div>
-        <button class="rounded-2xl bg-pink-500 px-5 py-3 font-semibold text-white hover:bg-pink-600" aria-label={ko.account.records.add}>{ko.account.records.add}</button>
+        <Button class="w-full" type="submit" aria-label={ko.account.records.add}>{ko.account.records.add}</Button>
       </form>
-      <div class="mt-5 divide-y divide-slate-100">
+      <div class="mt-5 divide-y divide-ink-100">
         {#each gameRecords as record}
-          <article class="flex items-center justify-between gap-4 py-3">
+          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-center xs:justify-between">
             <div>
-              <p class="font-semibold text-slate-900">{record.mode} · {record.tableName ?? ko.account.records.untitled}</p>
-              <p class="text-sm text-slate-500">{formatDateTime(record.startedAt)} · {record.rounds == null ? ko.account.records.noRounds : formatNumber(record.rounds)}국</p>
+              <a class="font-black text-ink-900 hover:text-brand-700" href={`/records/${record.id}`}>{record.mode} · {record.tableName ?? ko.account.records.untitled}</a>
+              <p class="text-sm text-ink-500">{formatDateTime(record.startedAt)} · {record.rounds == null ? ko.account.records.noRounds : formatNumber(record.rounds)}국</p>
             </div>
-            <button class="text-sm font-semibold text-rose-600" aria-label={ko.account.records.delete} onclick={() => removeItem(() => api.deleteGameRecord(record.id), ko.account.messages.recordDeleted)}>{ko.account.records.delete}</button>
+            <Button variant="ghost" size="sm" aria-label={ko.account.records.delete} onclick={() => removeItem(() => api.deleteGameRecord(record.id), ko.account.messages.recordDeleted)}>{ko.account.records.delete}</Button>
           </article>
         {:else}
-          <p class="py-4 text-sm text-slate-500">{ko.account.records.empty}</p>
+          <StatusBlock title={ko.account.records.empty} actionLabel="대국 목록 보기" actionHref="/records" />
         {/each}
       </div>
-    </section>
+    </Card>
 
-    <section class="rounded-[2rem] border border-white/70 bg-white p-6 shadow-lg shadow-slate-200">
-      <h2 class="text-xl font-black text-slate-950">{ko.account.notes.title}</h2>
-      <form class="mt-5 grid gap-3" onsubmit={(event) => { event.preventDefault(); void submitNote(); }}>
-        <input class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={noteTitle} placeholder={ko.account.notes.titlePlaceholder} aria-label={ko.account.notes.titlePlaceholder} required />
-        <select class="rounded-2xl border border-slate-200 px-4 py-3" bind:value={noteGameRecordId} aria-label={ko.account.notes.noRecord}>
+    <Card title={ko.account.notes.title}>
+      <form class="grid gap-3" onsubmit={(event) => { event.preventDefault(); void submitNote(); }}>
+        <Input bind:value={noteTitle} placeholder={ko.account.notes.titlePlaceholder} aria-label={ko.account.notes.titlePlaceholder} required />
+        <Select bind:value={noteGameRecordId} aria-label={ko.account.notes.noRecord}>
           <option value="">{ko.account.notes.noRecord}</option>
           {#each gameRecords as record}
             <option value={record.id}>{record.mode} · {record.tableName ?? formatDate(record.startedAt)}</option>
           {/each}
-        </select>
-        <textarea class="min-h-28 rounded-2xl border border-slate-200 px-4 py-3" bind:value={noteBody} placeholder={ko.account.notes.bodyPlaceholder} aria-label={ko.account.notes.bodyPlaceholder} required></textarea>
-        <button class="rounded-2xl bg-pink-500 px-5 py-3 font-semibold text-white hover:bg-pink-600" aria-label={ko.account.notes.save}>{ko.account.notes.save}</button>
+        </Select>
+        <textarea class="min-h-32 w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-base text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100" bind:value={noteBody} placeholder={ko.account.notes.bodyPlaceholder} aria-label={ko.account.notes.bodyPlaceholder} required></textarea>
+        <Button class="w-full" type="submit" aria-label={ko.account.notes.save}>{ko.account.notes.save}</Button>
       </form>
-      <div class="mt-5 divide-y divide-slate-100">
+      <div class="mt-5 divide-y divide-ink-100">
         {#each notes as note}
-          <article class="flex items-start justify-between gap-4 py-3">
-            <div>
-              <p class="font-semibold text-slate-900">{note.title}</p>
-              <p class="mt-1 line-clamp-2 text-sm text-slate-500">{note.body}</p>
+          <article class="flex flex-col gap-3 py-4 xs:flex-row xs:items-start xs:justify-between">
+            <div class="min-w-0">
+              <p class="font-black text-ink-900">{note.title}</p>
+              <p class="mt-1 line-clamp-2 text-sm text-ink-500">{note.body}</p>
             </div>
-            <button class="text-sm font-semibold text-rose-600" aria-label={ko.account.notes.delete} onclick={() => removeItem(() => api.deleteNote(note.id), ko.account.messages.noteDeleted)}>{ko.account.notes.delete}</button>
+            <Button variant="ghost" size="sm" aria-label={ko.account.notes.delete} onclick={() => removeItem(() => api.deleteNote(note.id), ko.account.messages.noteDeleted)}>{ko.account.notes.delete}</Button>
           </article>
         {:else}
-          <p class="py-4 text-sm text-slate-500">{ko.account.notes.empty}</p>
+          <StatusBlock title={ko.account.notes.empty} />
         {/each}
       </div>
-    </section>
+    </Card>
   </div>
-
-  {#if loading}
-    <p class="mt-8 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-500 shadow-sm">{ko.account.loading}</p>
-  {/if}
 </section>
