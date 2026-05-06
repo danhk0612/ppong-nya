@@ -6,6 +6,7 @@
 
 - 로컬 개발용 Node.js 20 이상
 - npm 10 이상
+- 커밋된 `package-lock.json` 기반 의존성 설치
 - 컨테이너 실행용 Docker 및 Docker Compose
 - 영속 데이터가 필요한 환경에서 사용할 MariaDB 호환 데이터베이스
 
@@ -31,7 +32,7 @@ openssl rand -base64 32
 
 ## 이미지 빌드
 
-Dockerfile의 빌드 단계는 npm lockfile이 있으면 그대로 사용하고, 현재 저장소처럼 lockfile이 없으면 컨테이너 내부에서 lockfile을 생성한 뒤 `npm ci`와 `npm run build`를 순서대로 실행합니다. 재현 가능한 운영 빌드를 위해서는 생성된 npm lockfile을 별도로 커밋하는 것을 권장합니다.
+Dockerfile의 빌드 단계는 커밋된 npm lockfile을 우선 사용하고 `npm ci`와 `npm run build`를 순서대로 실행합니다. lockfile이 없는 오래된 체크아웃을 위해 컨테이너 내부에서 lockfile을 생성하는 fallback은 유지하지만, 재현 가능한 로컬/CI/운영 빌드를 위해서는 `package-lock.json`을 생성해 커밋하는 것을 권장합니다.
 
 ```sh
 docker build -t ppong-nya:latest .
@@ -88,7 +89,8 @@ Compose 네트워크 안에서는 서비스 이름인 `db`를 호스트명으로
 - 운영 데이터에는 영속 볼륨 또는 관리형 MariaDB 서비스를 사용하세요.
 - TLS 종료는 플랫폼 로드 밸런서, 리버스 프록시, 또는 ingress controller에서 처리하세요.
 - 데이터베이스 스키마가 변경되면 새 버전으로 트래픽을 전환하기 전에 `npm run db:migrate:deploy`를 실행하세요.
-- `package.json`, npm lockfile, 또는 애플리케이션 소스가 변경될 때마다 이미지를 다시 빌드해 배포하세요.
+- `package.json`, `package-lock.json`, 또는 애플리케이션 소스가 변경될 때마다 이미지를 다시 빌드해 배포하세요.
+- CI는 커밋된 `package-lock.json`을 기준으로 `npm ci`를 실행해 의존성 설치가 lockfile과 일치하는지 검증해야 합니다.
 
 ## 데이터베이스 및 Prisma 초기화
 
@@ -125,6 +127,12 @@ DATABASE_URL="mysql://ppong_nya:strong-password@mariadb.example.com:3306/ppong_n
 
    ```sh
    npm install
+   ```
+
+   의존성 정의만 갱신하고 lockfile을 먼저 만들거나 갱신해야 한다면 저장소 루트에서 다음 명령을 사용할 수 있습니다. 생성된 `package-lock.json`은 커밋하세요.
+
+   ```sh
+   npm install --package-lock-only
    ```
 
 4. Prisma Client를 생성합니다.
