@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String           @id @default(cuid())
+  email         String           @unique @db.VarChar(255)
+  emailVerified DateTime?        @db.DateTime(3)
+  name          String?          @db.VarChar(120)
+  avatarUrl     String?          @db.VarChar(2048)
+  role          UserRole         @default(USER)
+  createdAt     DateTime         @default(now()) @db.DateTime(3)
+  updatedAt     DateTime         @updatedAt @db.DateTime(3)
+
+  accounts      Account[]
+  sessions      Session[]
+  gameRecords   GameRecord[]
+  preferences   UserPreference[]
+  savedItems    SavedItem[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String   @db.VarChar(64)
+  providerAccountId String   @db.VarChar(191)
+  type              String   @db.VarChar(64)
+  accessToken       String?  @db.Text
+  refreshToken      String?  @db.Text
+  expiresAt         Int?
+  tokenType         String?  @db.VarChar(64)
+  scope             String?  @db.Text
+  idToken           String?  @db.Text
+  sessionState      String?  @db.VarChar(255)
+  createdAt         DateTime @default(now()) @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @db.VarChar(191)
+  userId       String
+  expiresAt    DateTime @db.DateTime(3)
+  ipAddress    String?  @db.VarChar(45)
+  userAgent    String?  @db.VarChar(512)
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model GameRecord {
+  id            String     @id @default(cuid())
+  userId        String?
+  externalId    String?    @unique @db.VarChar(191)
+  mode          GameMode
+  startedAt     DateTime   @db.DateTime(3)
+  endedAt       DateTime?  @db.DateTime(3)
+  tableName     String?    @db.VarChar(120)
+  rounds        Int?
+  metadata      Json?
+  createdAt     DateTime   @default(now()) @db.DateTime(3)
+  updatedAt     DateTime   @updatedAt @db.DateTime(3)
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  players Player[]
+
+  @@index([userId])
+  @@index([mode, startedAt])
+  @@map("game_records")
+}
+
+model Player {
+  id           String     @id @default(cuid())
+  gameRecordId String
+  seat         Int
+  accountId    String?    @db.VarChar(191)
+  nickname     String     @db.VarChar(120)
+  rankLabel    String?    @db.VarChar(64)
+  score        Int
+  placement    Int
+  ratingDelta  Decimal?   @db.Decimal(10, 3)
+  metadata     Json?
+  createdAt    DateTime   @default(now()) @db.DateTime(3)
+  updatedAt    DateTime   @updatedAt @db.DateTime(3)
+
+  gameRecord GameRecord @relation(fields: [gameRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([gameRecordId, seat])
+  @@index([accountId])
+  @@index([placement])
+  @@map("players")
+}
+
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String   @db.VarChar(80)
+  value     Json
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("user_preferences")
+}
+
+model SavedItem {
+  id          String        @id @default(cuid())
+  userId      String
+  type        SavedItemType
+  title       String        @db.VarChar(200)
+  targetId    String?       @db.VarChar(191)
+  url         String?       @db.VarChar(2048)
+  description String?       @db.Text
+  data        Json?
+  createdAt   DateTime      @default(now()) @db.DateTime(3)
+  updatedAt   DateTime      @updatedAt @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([targetId])
+  @@map("saved_items")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String   @db.VarChar(120)
+  entityType String?  @db.VarChar(120)
+  entityId   String?  @db.VarChar(191)
+  ipAddress  String?  @db.VarChar(45)
+  userAgent  String?  @db.VarChar(512)
+  metadata   Json?
+  createdAt  DateTime @default(now()) @db.DateTime(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum GameMode {
+  SANMA
+  YONMA
+}
+
+enum SavedItemType {
+  PLAYER
+  GAME_RECORD
+  RANKING
+  SEARCH
+  LINK
+}
