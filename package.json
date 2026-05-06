@@ -14,6 +14,7 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
+    "@prisma/client": "^6.0.0",
     "dayjs": "^1.11.11",
     "i18next": "^23.16.8",
     "i18next-browser-languagedetector": "^8.0.0"
@@ -25,6 +26,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
+    "prisma": "^6.0.0",
     "svelte": "^5.15.0",
     "svelte-check": "^4.1.1",
     "tailwindcss": "^3.4.17",
@@ -35,6 +37,11 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
   }
 }
