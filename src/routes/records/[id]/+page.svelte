@@ -36,8 +36,8 @@
 </script>
 
 <svelte:head>
-  <title>대국 상세 | ppong-nya</title>
-  <meta name="description" content="ppong-nya에 저장한 대국 기록 상세를 확인합니다." />
+  <title>대국 상세 | 퐁냐</title>
+  <meta name="description" content="퐁냐에 저장한 대국 기록 상세를 확인합니다." />
 </svelte:head>
 
 <PageSection size="content">

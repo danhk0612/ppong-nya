@@ -1,6 +1,6 @@
 # 배포 가이드
 
-이 프로젝트는 `@sveltejs/adapter-node`를 사용해 SvelteKit Node 서버로 빌드됩니다. Docker 이미지는 빌드 단계에서 의존성 설치와 애플리케이션 빌드를 수행하고, 런타임 단계에는 빌드 산출물과 production dependencies만 포함합니다.
+퐁냐(ppong-nya)는 `@sveltejs/adapter-node`를 사용해 SvelteKit Node 서버로 빌드됩니다. Docker 이미지는 빌드 단계에서 의존성 설치와 애플리케이션 빌드를 수행하고, 런타임 단계에는 빌드 산출물과 production dependencies만 포함합니다.
 
 ## 사전 준비
 
