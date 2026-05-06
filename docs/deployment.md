@@ -6,22 +6,37 @@
 
 - 로컬 개발용 Node.js 20 이상
 - npm 10 이상
+- 커밋된 `package-lock.json` 기반 의존성 설치
 - 컨테이너 실행용 Docker 및 Docker Compose
 - 영속 데이터가 필요한 환경에서 사용할 MariaDB 호환 데이터베이스
 
 ## 런타임 환경 변수
 
-아래 값은 호스팅 플랫폼, `docker run -e`, Docker Compose `environment`, 또는 시크릿 매니저를 통해 주입하세요.
+아래 값은 호스팅 플랫폼, `docker run -e`, Docker Compose `environment`, 또는 시크릿 매니저를 통해 주입하세요. `src/lib/server/env.ts`에서 필수로 검증하는 값은 반드시 설정해야 합니다.
 
-| 변수                   | 예시                                            | 설명                                                                                        |
-| ---------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | `mysql://ppong_nya:password@db:3306/ppong_nya`  | 애플리케이션에서 사용할 MariaDB 연결 문자열입니다.                                          |
-| `GOOGLE_CLIENT_ID`     | `1234567890-example.apps.googleusercontent.com` | Google OAuth 클라이언트 ID입니다.                                                           |
-| `GOOGLE_CLIENT_SECRET` | `GOCSPX-example`                                | Google OAuth 클라이언트 시크릿입니다. 반드시 시크릿으로 보관하세요.                         |
-| `AUTH_SECRET`          | 긴 랜덤 문자열                                  | 인증 상태 서명에 사용할 시크릿입니다. 반드시 시크릿으로 보관하고 신중하게 교체하세요.       |
-| `ORIGIN`               | `https://example.com`                           | 배포된 앱의 공개 origin입니다. 로컬 Docker 실행에서는 `http://localhost:3000`을 사용합니다. |
-| `PORT`                 | `3000`                                          | Node 서버가 리슨할 포트입니다. 이미지 기본값은 `3000`입니다.                                |
-| `HOST`                 | `0.0.0.0`                                       | Node 서버가 바인딩할 인터페이스입니다. 이미지 기본값은 `0.0.0.0`입니다.                     |
+### 필수 애플리케이션 변수
+
+| 변수                   | 예시                                            | 설명                                                                                                                        |
+| ---------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | `mysql://ppong_nya:password@db:3306/ppong_nya`  | 애플리케이션에서 사용할 MariaDB 연결 문자열입니다.                                                                          |
+| `AUTH_SECRET`          | 긴 랜덤 문자열                                  | 인증 상태 서명에 사용할 시크릿입니다. 반드시 시크릿으로 보관하고 신중하게 교체하세요.                                       |
+| `GOOGLE_CLIENT_ID`     | `1234567890-example.apps.googleusercontent.com` | Google OAuth 클라이언트 ID입니다.                                                                                           |
+| `GOOGLE_CLIENT_SECRET` | `GOCSPX-example`                                | Google OAuth 클라이언트 시크릿입니다. 반드시 시크릿으로 보관하세요.                                                         |
+| `PUBLIC_SITE_URL`      | `https://example.com`                           | 브라우저와 서버 코드가 함께 사용하는 앱의 공개 기준 URL입니다. 로컬 Docker 실행에서는 `http://localhost:3000`을 사용합니다. |
+
+### 선택 애플리케이션 변수
+
+| 변수               | 예시   | 설명                                                                             |
+| ------------------ | ------ | -------------------------------------------------------------------------------- |
+| `PUBLIC_SITE_NAME` | `퐁냐` | 공개 사이트 이름입니다. 설정하지 않으면 애플리케이션 기본값 `퐁냐`를 사용합니다. |
+
+### 선택 SvelteKit adapter-node 런타임 변수
+
+| 변수     | 예시                  | 설명                                                                                                                                                                                      |
+| -------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`   | `3000`                | Node 서버가 리슨할 포트입니다. 이미지 기본값은 `3000`입니다.                                                                                                                              |
+| `HOST`   | `0.0.0.0`             | Node 서버가 바인딩할 인터페이스입니다. 이미지 기본값은 `0.0.0.0`입니다.                                                                                                                   |
+| `ORIGIN` | `https://example.com` | SvelteKit 런타임이 현재 요청 URL을 정확히 계산하지 못하는 배포 환경에서 설정하는 adapter-node용 origin입니다. `PUBLIC_SITE_URL`을 대체하지 않으며, 필요할 때 같은 origin 값으로 맞추세요. |
 
 로컬에서 강한 `AUTH_SECRET`을 생성하려면 다음 명령을 사용할 수 있습니다.
 
@@ -31,7 +46,7 @@ openssl rand -base64 32
 
 ## 이미지 빌드
 
-Dockerfile의 빌드 단계는 npm lockfile이 있으면 그대로 사용하고, 현재 저장소처럼 lockfile이 없으면 컨테이너 내부에서 lockfile을 생성한 뒤 `npm ci`와 `npm run build`를 순서대로 실행합니다. 재현 가능한 운영 빌드를 위해서는 생성된 npm lockfile을 별도로 커밋하는 것을 권장합니다.
+Dockerfile의 빌드 단계는 커밋된 npm lockfile을 우선 사용하고 `npm ci`와 `npm run build`를 순서대로 실행합니다. lockfile이 없는 오래된 체크아웃을 위해 컨테이너 내부에서 lockfile을 생성하는 fallback은 유지하지만, 재현 가능한 로컬/CI/운영 빌드를 위해서는 `package-lock.json`을 생성해 커밋하는 것을 권장합니다.
 
 ```sh
 docker build -t ppong-nya:latest .
@@ -42,6 +57,7 @@ docker build -t ppong-nya:latest .
 ```sh
 docker run --rm \
   -p 3000:3000 \
+  -e PUBLIC_SITE_URL=http://localhost:3000 \
   -e ORIGIN=http://localhost:3000 \
   -e DATABASE_URL=mysql://ppong_nya:ppong_nya_password@host.docker.internal:3306/ppong_nya \
   -e GOOGLE_CLIENT_ID=replace-me \
@@ -65,6 +81,7 @@ docker run --rm \
 GOOGLE_CLIENT_ID=replace-me
 GOOGLE_CLIENT_SECRET=replace-me
 AUTH_SECRET=replace-me-with-a-long-random-string
+PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 그다음 다음 명령으로 실행합니다.
@@ -73,9 +90,10 @@ AUTH_SECRET=replace-me-with-a-long-random-string
 docker compose up --build
 ```
 
-Compose 예시는 앱 컨테이너에 아래 데이터베이스 URL을 주입합니다.
+Compose 예시는 앱 컨테이너에 아래 공개 사이트 URL과 데이터베이스 URL을 주입합니다.
 
 ```env
+PUBLIC_SITE_URL=http://localhost:3000
 DATABASE_URL=mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya
 ```
 
@@ -83,12 +101,14 @@ Compose 네트워크 안에서는 서비스 이름인 `db`를 호스트명으로
 
 ## 운영 배포 참고 사항
 
-- `ORIGIN`은 실제 외부 스킴과 호스트에 맞춰 설정하세요. 예: `https://ppong-nya.example.com`
+- `PUBLIC_SITE_URL`은 실제 외부 스킴과 호스트에 맞춰 설정하세요. 예: `https://ppong-nya.example.com`
+- `ORIGIN`은 SvelteKit adapter-node가 요청 URL을 정확히 계산하지 못하는 환경에서만 추가로 설정하세요. 설정할 때는 `PUBLIC_SITE_URL`과 같은 origin 값을 사용하세요. 예: `https://ppong-nya.example.com`
 - `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, 데이터베이스 비밀번호 등 민감한 값은 플랫폼의 시크릿 매니저에 저장하세요.
 - 운영 데이터에는 영속 볼륨 또는 관리형 MariaDB 서비스를 사용하세요.
 - TLS 종료는 플랫폼 로드 밸런서, 리버스 프록시, 또는 ingress controller에서 처리하세요.
 - 데이터베이스 스키마가 변경되면 새 버전으로 트래픽을 전환하기 전에 `npm run db:migrate:deploy`를 실행하세요.
-- `package.json`, npm lockfile, 또는 애플리케이션 소스가 변경될 때마다 이미지를 다시 빌드해 배포하세요.
+- `package.json`, `package-lock.json`, 또는 애플리케이션 소스가 변경될 때마다 이미지를 다시 빌드해 배포하세요.
+- CI는 커밋된 `package-lock.json`을 기준으로 `npm ci`를 실행해 의존성 설치가 lockfile과 일치하는지 검증해야 합니다.
 
 ## 데이터베이스 및 Prisma 초기화
 
@@ -125,6 +145,12 @@ DATABASE_URL="mysql://ppong_nya:strong-password@mariadb.example.com:3306/ppong_n
 
    ```sh
    npm install
+   ```
+
+   의존성 정의만 갱신하고 lockfile을 먼저 만들거나 갱신해야 한다면 저장소 루트에서 다음 명령을 사용할 수 있습니다. 생성된 `package-lock.json`은 커밋하세요.
+
+   ```sh
+   npm install --package-lock-only
    ```
 
 4. Prisma Client를 생성합니다.

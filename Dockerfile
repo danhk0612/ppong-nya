@@ -27,6 +27,6 @@ COPY --from=build /app/build ./build
 EXPOSE 3000
 
 # Inject runtime configuration such as DATABASE_URL, GOOGLE_CLIENT_ID,
-# GOOGLE_CLIENT_SECRET, AUTH_SECRET, and ORIGIN with `docker run -e`,
+# GOOGLE_CLIENT_SECRET, AUTH_SECRET, PUBLIC_SITE_URL, and optional ORIGIN with `docker run -e`,
 # Docker Compose `environment`, or an orchestrator secret manager.
 CMD ["node", "build"]
