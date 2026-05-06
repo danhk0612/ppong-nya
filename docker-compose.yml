@@ -10,6 +10,7 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
+      PUBLIC_SITE_URL: http://localhost:3000
       ORIGIN: http://localhost:3000
       DATABASE_URL: mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-replace-me}
