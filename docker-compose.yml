@@ -6,6 +6,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -19,6 +21,18 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: build
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya
+    command: ["npm", "run", "db:migrate:deploy"]
+    restart: "no"
 
   db:
     image: mariadb:11.4
