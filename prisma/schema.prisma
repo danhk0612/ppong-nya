@@ -20,6 +20,7 @@ model User {
   accounts         Account[]
   sessions         Session[]
   gameRecords      GameRecord[]
+  playerSnapshots  PlayerSnapshot[]
   preferences      UserPreference[]
   favoritePlayers  FavoritePlayer[]
   gameNotes        GameNote[]
@@ -82,25 +83,33 @@ model VerificationToken {
 
 /// User-owned game records imported from external sources or manually created.
 model GameRecord {
-  id         String    @id @default(cuid())
-  userId     String
-  externalId String?   @db.VarChar(191)
-  mode       GameMode
-  startedAt  DateTime  @db.DateTime(3)
-  endedAt    DateTime? @db.DateTime(3)
-  tableName  String?   @db.VarChar(120)
-  rounds     Int?
-  metadata   Json?
-  createdAt  DateTime  @default(now()) @db.DateTime(3)
-  updatedAt  DateTime  @updatedAt @db.DateTime(3)
+  id             String    @id @default(cuid())
+  userId         String?
+  externalId     String?   @db.VarChar(191)
+  source         String?   @db.VarChar(80)
+  sourceRecordId String?   @db.VarChar(191)
+  uuid           String?   @db.VarChar(191)
+  mode           GameMode
+  externalModeId Int?
+  startedAt      DateTime  @db.DateTime(3)
+  endedAt        DateTime? @db.DateTime(3)
+  tableName      String?   @db.VarChar(120)
+  rounds         Int?
+  metadata       Json?
+  rawPayload     Json?
+  createdAt      DateTime  @default(now()) @db.DateTime(3)
+  updatedAt      DateTime  @updatedAt @db.DateTime(3)
 
-  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   players Player[]
   notes   GameNote[]
 
   @@unique([userId, externalId])
+  @@unique([source, sourceRecordId])
+  @@unique([source, uuid])
   @@index([userId])
   @@index([mode, startedAt])
+  @@index([externalModeId, startedAt])
   @@map("game_records")
 }
 
@@ -214,6 +223,70 @@ model StatisticsCache {
   @@index([userId, scope])
   @@index([expiresAt])
   @@map("statistics_caches")
+}
+
+/// Raw JSON cache for proxied upstream ppong-nya API responses.
+model ExternalApiCache {
+  id              String   @id @default(cuid())
+  cacheKey        String   @unique @db.VarChar(191)
+  endpoint        String   @db.VarChar(512)
+  method          String   @default("GET") @db.VarChar(12)
+  requestBody     String?  @db.LongText
+  status          Int
+  responseHeaders Json?
+  payload         Json
+  expiresAt       DateTime @db.DateTime(3)
+  createdAt       DateTime @default(now()) @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @db.DateTime(3)
+
+  @@index([endpoint])
+  @@index([expiresAt])
+  @@map("external_api_caches")
+}
+
+/// Materialized player-level summaries derived from local GameRecord rows or upstream responses during migration.
+model PlayerSnapshot {
+  id          String    @id @default(cuid())
+  userId      String?
+  playerId    String    @db.VarChar(191)
+  nickname    String?   @db.VarChar(120)
+  scope       String    @db.VarChar(80)
+  modes       Json?
+  periodStart DateTime? @db.DateTime(3)
+  periodEnd   DateTime? @db.DateTime(3)
+  source      String    @default("external") @db.VarChar(80)
+  payload     Json
+  computedAt  DateTime  @default(now()) @db.DateTime(3)
+  expiresAt   DateTime? @db.DateTime(3)
+  createdAt   DateTime  @default(now()) @db.DateTime(3)
+  updatedAt   DateTime  @updatedAt @db.DateTime(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, playerId, scope])
+  @@index([playerId])
+  @@index([scope])
+  @@index([expiresAt])
+  @@map("player_snapshots")
+}
+
+/// Materialized aggregate statistics/ranking snapshots that can replace or cache upstream aggregate endpoints.
+model StatisticsSnapshot {
+  id         String    @id @default(cuid())
+  cacheKey   String    @unique @db.VarChar(191)
+  scope      String    @db.VarChar(80)
+  modes      Json?
+  period     String?   @db.VarChar(80)
+  source     String    @default("external") @db.VarChar(80)
+  payload    Json
+  computedAt DateTime  @default(now()) @db.DateTime(3)
+  expiresAt  DateTime? @db.DateTime(3)
+  createdAt  DateTime  @default(now()) @db.DateTime(3)
+  updatedAt  DateTime  @updatedAt @db.DateTime(3)
+
+  @@index([scope])
+  @@index([expiresAt])
+  @@map("statistics_snapshots")
 }
 
 model SavedItem {

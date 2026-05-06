@@ -1,17 +1,8 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import dayjs from "dayjs";
-import Conf from "../../utils/conf";
-import { savePreference } from "../../utils/preference";
+import utc from "dayjs/plugin/utc";
 
-const DATA_MIRRORS = [
-  "https://data.ppong-nya.com/",
-  "https://1.data.ppong-nya.com/",
-  "https://2.data.ppong-nya.com/",
-  "https://4.data.ppong-nya.com/",
-];
-const PROBE_TIMEOUT = 15000;
-
-let selectedMirror = DATA_MIRRORS[0];
+dayjs.extend(utc);
 
 let onMaintenance: (msg: string) => void = () => {};
 
@@ -19,76 +10,11 @@ export function setMaintenanceHandler(handler: (msg: string) => void) {
   onMaintenance = handler;
 }
 
-export const getApiPrefix = () => selectedMirror + Conf.apiSuffix;
+export const getApiPrefix = () => "/api/external/";
 
-async function fetchWithTimeout(
-  url: string,
-  opts: Parameters<typeof fetch>[1] = {},
-  timeout = 5000
-): Promise<Response> {
-  const abortController = window.AbortController ? new AbortController() : { signal: undefined, abort: () => {} };
-  const timeoutToken = setTimeout(function () {
-    abortController.abort();
-  }, timeout);
-  const ret = fetch(url, { ...opts, signal: abortController.signal }) as Promise<Response>;
-  ret.then(() => clearTimeout(timeoutToken)).catch(() => clearTimeout(timeoutToken));
-  return ret;
-}
-
-let mirrorProbePromise = null as null | Promise<Response>;
-
-async function fetchData(path: string, opts: Parameters<typeof fetch>[1] = {}, retry = true): Promise<Response> {
-  try {
-    return await fetchWithTimeout(selectedMirror + path, opts);
-  } catch (e) {
-    console.warn(e);
-    if (!retry) {
-      throw e;
-    }
-    if (mirrorProbePromise) {
-      console.warn(`Failed to fetch data from mirror ${selectedMirror}, waiting for probe in progress...`);
-      await mirrorProbePromise.then(() => {}).catch(() => {});
-      return fetchData(path, opts, false);
-    }
-    console.warn(`Failed to fetch data from mirror ${selectedMirror}, trying other mirror...`);
-  }
-
-  mirrorProbePromise = (async function () {
-    let completedResponse = null as null | Response;
-    return Promise.race(
-      DATA_MIRRORS.map((mirror) =>
-        fetchWithTimeout(mirror + path, opts, PROBE_TIMEOUT)
-          .then(function (resp) {
-            if (completedResponse) {
-              return resp;
-            }
-            completedResponse = resp;
-            selectedMirror = mirror;
-            savePreference("selectedMirror", selectedMirror);
-            console.log(`Set ${mirror} as preferred`);
-            return resp;
-          })
-          .catch(
-            (e) =>
-              new Promise((resolve) =>
-                setTimeout(() => {
-                  if (completedResponse) {
-                    return resolve(completedResponse);
-                  }
-                  resolve(e); // Do not reject here, may cause unhandled promise rejection
-                }, PROBE_TIMEOUT)
-              )
-          )
-      )
-    ).then((result) => {
-      if ("ok" in (result as Response | Error)) {
-        return result;
-      }
-      return Promise.reject(result);
-    }) as Promise<Response>;
-  })();
-  mirrorProbePromise.then(() => (mirrorProbePromise = null)).catch(() => (mirrorProbePromise = null));
-  return mirrorProbePromise;
+async function fetchData(path: string, opts: Parameters<typeof fetch>[1] = {}): Promise<Response> {
+  const normalizedPath = path.replace(/^\/+/, "");
+  return fetch(`${getApiPrefix()}${normalizedPath}`, opts);
 }
 
 let apiCache = {} as { [path: string]: unknown };
@@ -125,15 +51,6 @@ async function handleResponse<T>(cacheKey: string, resp: Response): Promise<T & 
     onMaintenance(data.maintenance);
     return new Promise(() => {}) as Promise<T & WithLastModified>; // Freeze all other components
   }
-  if (data?.result_key) {
-    await new Promise((res) => setTimeout(res, 1000));
-    const resultResp = await fetchData(`${Conf.apiSuffix}result/${data.result_key}`, {
-      headers: {
-        "Cache-Control": "max-age=0, no-cache",
-      },
-    });
-    return handleResponse(cacheKey, resultResp);
-  }
   const lastModified = resp.headers.get("last-modified");
   if (lastModified && typeof data === "object") {
     const parsed = dayjs.utc(lastModified.slice(lastModified.indexOf(" ") + 1), "DD MMM YYYY HH:mm:ss");
@@ -152,7 +69,7 @@ export async function apiGet<T>(path: string): Promise<T & { _lastModified?: day
   if (path in apiCache) {
     return apiCache[path] as T & WithLastModified;
   }
-  const resp = await fetchData(Conf.apiSuffix + path);
+  const resp = await fetchData(path);
   return await handleResponse(path, resp);
 }
 
@@ -162,7 +79,7 @@ export async function apiCacheablePost<T>(path: string, body: unknown): Promise<
   if (key in apiCache) {
     return apiCache[key] as T;
   }
-  const resp = await fetchData(Conf.apiSuffix + path, {
+  const resp = await fetchData(path, {
     method: "POST",
     body: bodyStr,
     headers: {
