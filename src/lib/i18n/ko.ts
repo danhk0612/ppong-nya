@@ -2,7 +2,8 @@ export const ko = {
   app: {
     name: "퐁냐",
     title: "퐁냐 | ppong-nya",
-    description: "퐁냐(ppong-nya)는 작혼 전적, 랭킹, 통계를 한눈에 살펴보는 한국어 서비스입니다.",
+    description:
+      "퐁냐(ppong-nya)는 작혼 전적, 랭킹, 통계를 한눈에 살펴보는 한국어 서비스입니다.",
     navigationLabel: "기본 내비게이션",
     logoKana: "にゃ",
   },
@@ -27,12 +28,42 @@ export const ko = {
     dashboardTitle: "홈 대시보드",
     betaBadge: "베타",
     highlights: [
-      { id: "ranking", label: "실시간 랭킹", description: "단위전과 대회 기록을 빠르게 탐색할 수 있도록 준비 중입니다." },
-      { id: "player-search", label: "플레이어 검색", description: "닉네임과 플레이어 ID로 작혼 플레이어를 찾는 검색 화면을 한국어로 제공합니다." },
-      { id: "records", label: "대국 기록", description: "플레이어별 경기 흐름과 최근 대국 기록을 ppong-nya에서 이어갑니다." },
-      { id: "statistics", label: "통계", description: "순위, 화료율, 방총률 등 주요 지표를 ko-KR 숫자 포맷으로 보여줄 예정입니다." },
-      { id: "settings", label: "설정", description: "계정별 표시 방식과 기본 언어를 한국어 중심으로 관리합니다." },
-      { id: "tools", label: "분석 도구", description: "필터, 통계, 하이라이트 기능을 SvelteKit 기반으로 새롭게 구성합니다." },
+      {
+        id: "ranking",
+        label: "실시간 랭킹",
+        description:
+          "단위전과 대회 기록을 빠르게 탐색할 수 있도록 준비 중입니다.",
+      },
+      {
+        id: "player-search",
+        label: "플레이어 검색",
+        description:
+          "닉네임과 플레이어 ID로 작혼 플레이어를 찾는 검색 화면을 한국어로 제공합니다.",
+      },
+      {
+        id: "records",
+        label: "대국 기록",
+        description:
+          "플레이어별 경기 흐름과 최근 대국 기록을 ppong-nya에서 이어갑니다.",
+      },
+      {
+        id: "statistics",
+        label: "통계",
+        description:
+          "순위, 화료율, 방총률 등 주요 지표를 ko-KR 숫자 포맷으로 보여줄 예정입니다.",
+      },
+      {
+        id: "settings",
+        label: "설정",
+        description:
+          "계정별 표시 방식과 기본 언어를 한국어 중심으로 관리합니다.",
+      },
+      {
+        id: "tools",
+        label: "분석 도구",
+        description:
+          "필터, 통계, 하이라이트 기능을 SvelteKit 기반으로 새롭게 구성합니다.",
+      },
     ],
   },
   login: {
@@ -43,7 +74,8 @@ export const ko = {
     body: "Google 계정으로 로그인하면 MariaDB에 사용자와 OAuth 계정 정보가 저장되고, 전적 저장 및 계정 관리 기능을 사용할 수 있습니다.",
     googleCta: "Google로 로그인",
     googleCtaLabel: "Google 계정으로 ppong-nya에 로그인",
-    envNotice: "OAuth 클라이언트에는 GOOGLE_CLIENT_ID와 GOOGLE_CLIENT_SECRET 환경 변수를 사용합니다.",
+    envNotice:
+      "OAuth 클라이언트에는 GOOGLE_CLIENT_ID와 GOOGLE_CLIENT_SECRET 환경 변수를 사용합니다.",
   },
   account: {
     title: "계정 관리 | ppong-nya",
@@ -52,6 +84,19 @@ export const ko = {
     unnamedUser: "이름 없는 사용자",
     userId: "사용자 ID",
     role: "권한",
+    sessionTitle: "세션 정보",
+    sessionExpires: "Auth.js 세션 만료",
+    databaseSessionId: "DB 세션 ID",
+    databaseSessionExpires: "DB 세션 만료",
+    databaseSessionMissing:
+      "현재 요청의 세션 토큰과 일치하는 sessions 레코드를 찾지 못했습니다.",
+    accountTitle: "연결된 OAuth 계정",
+    accountProvider: "제공자",
+    accountType: "유형",
+    accountProviderId: "제공자 계정 ID",
+    accountScope: "권한 범위",
+    accountConnectedAt: "연결 시각",
+    noAccount: "연결된 OAuth 계정이 없습니다.",
     scopeTitle: "저장 데이터 범위",
     scopeDescription:
       "ppong-nya는 사용자 설정, 즐겨찾기 플레이어, 대국 기록, 대국 메모, 검색 기록, 통계 캐시를 사용자 계정에 연결해 저장합니다. 이 화면은 우선 네 가지 CRUD API를 호출해 기본 데이터를 관리합니다.",
@@ -112,7 +157,8 @@ export const ko = {
     title: "오류가 발생했습니다 | ppong-nya",
     heading: "오류가 발생했습니다",
     unknownStatus: "알 수 없는 오류",
-    fallbackMessage: "요청한 화면을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    fallbackMessage:
+      "요청한 화면을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
     homeCta: "홈으로 돌아가기",
   },
 } as const;

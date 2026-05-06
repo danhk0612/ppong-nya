@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { signOut } from "@auth/sveltekit/client";
   import type { Session } from "@auth/sveltekit";
   import Button from "./Button.svelte";
   import { ko } from "$lib/i18n";
@@ -7,6 +6,11 @@
   let { session }: { session: Session | null } = $props();
 
   const fallbackInitial = $derived(session?.user?.email?.slice(0, 1).toUpperCase() ?? "?");
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/";
+  }
 </script>
 
 {#if session?.user}
@@ -23,7 +27,7 @@
       <span class="max-w-28 truncate lg:max-w-40">{session.user.name ?? session.user.email ?? ko.nav.account}</span>
     </a>
 
-    <Button size="sm" aria-label={ko.nav.logout} onclick={() => signOut({ callbackUrl: "/" })}>
+    <Button size="sm" aria-label={ko.nav.logout} onclick={() => void logout()}>
       {ko.nav.logout}
     </Button>
   </div>
