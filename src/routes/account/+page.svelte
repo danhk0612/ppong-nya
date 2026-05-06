@@ -17,6 +17,9 @@
 
   let { data } = $props();
   const user = $derived(data.user);
+  const session = $derived(data.session);
+  const accounts = $derived(data.accounts);
+  const databaseSession = $derived(data.databaseSession);
   const api = createUserDataApi();
 
   let preferences = $state<UserPreferenceItem[]>([]);
@@ -165,6 +168,62 @@
   <Card class="mt-6 border-brand-100 bg-brand-50/80" title={ko.account.scopeTitle}>
     <p class="text-sm leading-6 text-ink-600">{ko.account.scopeDescription}</p>
   </Card>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <Card title={ko.account.sessionTitle}>
+      <dl class="grid gap-4">
+        <div class="rounded-3xl bg-cream-100 p-5">
+          <dt class="text-sm font-black text-ink-500">{ko.account.sessionExpires}</dt>
+          <dd class="mt-2 font-mono text-sm text-ink-900">{formatDateTime(session.expires)}</dd>
+        </div>
+        {#if databaseSession}
+          <div class="rounded-3xl bg-cream-100 p-5">
+            <dt class="text-sm font-black text-ink-500">{ko.account.databaseSessionId}</dt>
+            <dd class="mt-2 break-all font-mono text-sm text-ink-900">{databaseSession.id}</dd>
+          </div>
+          <div class="rounded-3xl bg-cream-100 p-5">
+            <dt class="text-sm font-black text-ink-500">{ko.account.databaseSessionExpires}</dt>
+            <dd class="mt-2 font-mono text-sm text-ink-900">{formatDateTime(databaseSession.expires)}</dd>
+          </div>
+        {:else}
+          <StatusBlock title={ko.account.databaseSessionMissing} />
+        {/if}
+      </dl>
+    </Card>
+
+    <Card title={ko.account.accountTitle}>
+      <div class="grid gap-4">
+        {#each accounts as account}
+          <article class="rounded-3xl border border-ink-100 bg-white p-5">
+            <dl class="grid gap-3 text-sm">
+              <div>
+                <dt class="font-black text-ink-500">{ko.account.accountProvider}</dt>
+                <dd class="mt-1 font-black text-ink-900">{account.provider}</dd>
+              </div>
+              <div>
+                <dt class="font-black text-ink-500">{ko.account.accountType}</dt>
+                <dd class="mt-1 text-ink-900">{account.type}</dd>
+              </div>
+              <div>
+                <dt class="font-black text-ink-500">{ko.account.accountProviderId}</dt>
+                <dd class="mt-1 break-all font-mono text-ink-900">{account.providerAccountId}</dd>
+              </div>
+              <div>
+                <dt class="font-black text-ink-500">{ko.account.accountScope}</dt>
+                <dd class="mt-1 break-all text-ink-900">{account.scope ?? "-"}</dd>
+              </div>
+              <div>
+                <dt class="font-black text-ink-500">{ko.account.accountConnectedAt}</dt>
+                <dd class="mt-1 font-mono text-ink-900">{formatDateTime(account.createdAt)}</dd>
+              </div>
+            </dl>
+          </article>
+        {:else}
+          <StatusBlock title={ko.account.noAccount} />
+        {/each}
+      </div>
+    </Card>
+  </div>
 
   <div class="mt-6 grid gap-3">
     <Toast message={message} tone="success" />

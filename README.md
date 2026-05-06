@@ -53,18 +53,18 @@
 cp .env.example .env
 ```
 
-| 변수명 | 필수 여부 | 노출 범위 | 예시 | 설명 |
-| --- | --- | --- | --- | --- |
-| `DATABASE_URL` | 필수 | 서버 전용 | `mysql://USER:PASSWORD@HOST:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10` | Prisma가 사용하는 MariaDB/MySQL 연결 문자열입니다. |
-| `AUTH_SECRET` | 필수 | 서버 전용 | `openssl rand -base64 32`로 생성한 긴 문자열 | Auth.js/SvelteKitAuth 쿠키와 토큰 서명/암호화에 사용하는 비밀값입니다. |
-| `GOOGLE_CLIENT_ID` | 필수 | 서버 전용 | `replace-with-google-client-id.apps.googleusercontent.com` | Google OAuth 클라이언트 ID입니다. |
-| `GOOGLE_CLIENT_SECRET` | 필수 | 서버 전용 | `replace-with-google-client-secret` | Google OAuth 클라이언트 보안 비밀입니다. |
-| `PUBLIC_SITE_URL` | 필수 | 공개 | `http://localhost:5173` | 서비스의 기준 URL입니다. OAuth 리다이렉트 검증과 공개 런타임 설정에 사용됩니다. |
-| `PUBLIC_SITE_NAME` | 선택 | 공개 | `퐁냐` | 공개 사이트명입니다. 값이 없으면 코드에서 `퐁냐`를 기본값으로 사용합니다. |
-| `ORIGIN` | 배포 시 권장 | 서버 런타임 | `https://ppong-nya.com` | `@sveltejs/adapter-node` 실행 시 요청 origin 검증에 사용하는 값입니다. Docker 예시는 `http://localhost:3000`을 사용합니다. |
-| `HOST` | 배포 시 권장 | 서버 런타임 | `0.0.0.0` | Node adapter 서버가 바인딩할 호스트입니다. |
-| `PORT` | 배포 시 권장 | 서버 런타임 | `3000` | Node adapter 서버 포트입니다. |
-| `NODE_ENV` | 배포 시 권장 | 서버 런타임 | `production` | 프로덕션 런타임 여부를 나타냅니다. |
+| 변수명                 | 필수 여부    | 노출 범위   | 예시                                                                                              | 설명                                                                                                                       |
+| ---------------------- | ------------ | ----------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | 필수         | 서버 전용   | `mysql://USER:PASSWORD@HOST:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10` | Prisma가 사용하는 MariaDB/MySQL 연결 문자열입니다.                                                                         |
+| `AUTH_SECRET`          | 필수         | 서버 전용   | `openssl rand -base64 32`로 생성한 긴 문자열                                                      | Auth.js/SvelteKitAuth 쿠키와 토큰 서명/암호화에 사용하는 비밀값입니다.                                                     |
+| `GOOGLE_CLIENT_ID`     | 필수         | 서버 전용   | `replace-with-google-client-id.apps.googleusercontent.com`                                        | Google OAuth 클라이언트 ID입니다.                                                                                          |
+| `GOOGLE_CLIENT_SECRET` | 필수         | 서버 전용   | `replace-with-google-client-secret`                                                               | Google OAuth 클라이언트 보안 비밀입니다.                                                                                   |
+| `PUBLIC_SITE_URL`      | 필수         | 공개        | `http://localhost:5173`                                                                           | 서비스의 기준 URL입니다. OAuth 리다이렉트 검증과 공개 런타임 설정에 사용됩니다.                                            |
+| `PUBLIC_SITE_NAME`     | 선택         | 공개        | `퐁냐`                                                                                            | 공개 사이트명입니다. 값이 없으면 코드에서 `퐁냐`를 기본값으로 사용합니다.                                                  |
+| `ORIGIN`               | 배포 시 권장 | 서버 런타임 | `https://ppong-nya.com`                                                                           | `@sveltejs/adapter-node` 실행 시 요청 origin 검증에 사용하는 값입니다. Docker 예시는 `http://localhost:3000`을 사용합니다. |
+| `HOST`                 | 배포 시 권장 | 서버 런타임 | `0.0.0.0`                                                                                         | Node adapter 서버가 바인딩할 호스트입니다.                                                                                 |
+| `PORT`                 | 배포 시 권장 | 서버 런타임 | `3000`                                                                                            | Node adapter 서버 포트입니다.                                                                                              |
+| `NODE_ENV`             | 배포 시 권장 | 서버 런타임 | `production`                                                                                      | 프로덕션 런타임 여부를 나타냅니다.                                                                                         |
 
 주의사항:
 
@@ -131,13 +131,13 @@ npm run db:studio         # Prisma Studio 실행
 
 로컬 Docker Compose DB 기본값은 다음과 같습니다.
 
-| 항목 | 값 |
-| --- | --- |
-| 데이터베이스 | `ppong_nya` |
-| 사용자 | `ppong_nya` |
-| 비밀번호 | `ppong_nya_password` |
-| 호스트 | 로컬 개발: `localhost`, Compose 내부 앱: `db` |
-| 포트 | `3306` |
+| 항목         | 값                                            |
+| ------------ | --------------------------------------------- |
+| 데이터베이스 | `ppong_nya`                                   |
+| 사용자       | `ppong_nya`                                   |
+| 비밀번호     | `ppong_nya_password`                          |
+| 호스트       | 로컬 개발: `localhost`, Compose 내부 앱: `db` |
+| 포트         | `3306`                                        |
 
 Compose 내부 앱에서 사용하는 연결 문자열 예시는 다음과 같습니다.
 
@@ -161,13 +161,14 @@ DATABASE_URL="mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya"
    http://localhost:5173/auth/callback/google
    ```
 
-5. 발급받은 값을 `.env`에 입력합니다.
+5. 발급받은 값과 데이터베이스 연결 문자열을 `.env`에 입력합니다.
 
    ```env
    GOOGLE_CLIENT_ID="replace-with-google-client-id.apps.googleusercontent.com"
    GOOGLE_CLIENT_SECRET="replace-with-google-client-secret"
    AUTH_SECRET="replace-with-a-long-random-secret"
    PUBLIC_SITE_URL="http://localhost:5173"
+   DATABASE_URL="mysql://ppong_nya:ppong_nya_password@localhost:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10"
    ```
 
 6. 프로덕션에서는 실제 도메인 기준으로 원본과 리디렉션 URI를 추가합니다.
@@ -176,6 +177,16 @@ DATABASE_URL="mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya"
    https://ppong-nya.com
    https://ppong-nya.com/auth/callback/google
    ```
+
+### Google 로그인 검증 체크리스트
+
+1. 앱을 로컬에서 실행하기 전에 `npm run db:migrate:dev`로 `users`, `accounts`, `sessions` 테이블이 포함된 Prisma 마이그레이션을 적용합니다.
+2. `npm run dev`로 앱을 실행하고 `http://localhost:5173/login`에 접속합니다.
+3. `Google로 로그인` 버튼을 눌러 인증을 완료한 뒤 `/account`로 이동하는지 확인합니다.
+4. Prisma Studio나 SQL 클라이언트에서 로그인 직후 `users`, `accounts`, `sessions` 테이블에 현재 사용자, Google 계정 연결, 세션 레코드가 생성됐는지 확인합니다.
+5. `/account` 상단의 세션 정보 카드에서 Auth.js 세션 만료 시각, DB 세션 ID/만료 시각, 연결된 OAuth 계정 정보가 표시되는지 확인합니다.
+6. 로그아웃 API는 같은 origin에서 `POST /api/auth/logout`으로 호출합니다. 성공 응답은 `authenticated: false`와 삭제된 DB 세션 수를 반환하며 Auth.js 세션 쿠키를 제거합니다.
+7. 로그아웃 후 `/account`를 다시 열었을 때 보호 페이지 접근이 차단되고 `/login`으로 리디렉션되는지 확인합니다.
 
 ## Docker 실행
 
