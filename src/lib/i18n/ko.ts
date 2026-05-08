@@ -68,10 +68,10 @@ export const ko = {
   },
   login: {
     title: "로그인 | 퐁냐",
-    description: "Google OAuth로 퐁냐에 로그인합니다.",
-    eyebrow: "Google OAuth 로그인",
+    description: "이메일 또는 Google 계정으로 퐁냐에 로그인합니다.",
+    eyebrow: "이메일 / Google 로그인",
     heading: "퐁냐 계정으로 시작하기",
-    body: "Google 계정으로 로그인하면 MariaDB에 사용자와 OAuth 계정 정보가 저장되고, 전적 저장 및 계정 관리 기능을 사용할 수 있습니다.",
+    body: "이메일 또는 Google 계정으로 로그인하면 MariaDB에 사용자와 계정 정보가 저장되고, 전적 저장 및 계정 관리 기능을 사용할 수 있습니다.",
     googleCta: "Google로 로그인",
     googleCtaLabel: "Google 계정으로 퐁냐에 로그인",
     envNotice:
@@ -80,7 +80,7 @@ export const ko = {
   account: {
     title: "계정 관리 | 퐁냐",
     description: "퐁냐 로그인 계정과 개인 데이터를 관리합니다.",
-    providerLabel: "Google 로그인 계정",
+    providerLabel: "로그인 계정",
     unnamedUser: "이름 없는 사용자",
     userId: "사용자 ID",
     role: "권한",

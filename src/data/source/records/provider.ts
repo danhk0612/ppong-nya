@@ -1,20 +1,25 @@
 import dayjs from "dayjs";
 
-import { GameRecord } from "../../types/record";
-import { Metadata, PlayerMetadata } from "../../types/metadata";
+import type { GameRecord } from "../../types/record";
+import type { Metadata, PlayerMetadata } from "../../types/metadata";
 import {
   ListingDataLoader,
   PlayerDataLoader,
-  DataLoader,
   RecentHighlightDataLoader,
   FixedNumberPlayerDataLoader,
   DummyDataLoader,
   FilteredPlayerDataLoader,
 } from "./loader";
+import type { DataLoader } from "./loader";
 import { GameMode } from "../../types";
 
-export type FilterPredicate<TRecord = GameRecord> = ((record: TRecord) => boolean) | null;
-class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: string } = GameRecord> {
+export type FilterPredicate<TRecord = GameRecord> =
+  | ((record: TRecord) => boolean)
+  | null;
+class DataProviderImpl<
+  TMetadata extends Metadata,
+  TRecord extends { uuid: string } = GameRecord,
+> {
   _loader: DataLoader<TMetadata, TRecord>;
   _metadata: TMetadata | Promise<TMetadata> | null;
   _metadataError?: unknown;
@@ -62,7 +67,8 @@ class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: strin
       const game = this._data[i];
       let result = this._filterResultCache[game.uuid];
       if (result === undefined) {
-        this._filterResultCache[game.uuid] = result = this._filterPredicate(game);
+        this._filterResultCache[game.uuid] = result =
+          this._filterPredicate(game);
       }
       if (result) {
         indices.push(i);
@@ -74,7 +80,9 @@ class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: strin
     if (this._metadataError) {
       throw this._metadataError;
     }
-    return this._metadata && !(this._metadata instanceof Promise) ? this._metadata : null;
+    return this._metadata && !(this._metadata instanceof Promise)
+      ? this._metadata
+      : null;
   }
   getEstimatedCountSync(): number {
     const metadata = this.getMetadataSync();
@@ -87,7 +95,9 @@ class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: strin
   getCountMaybeSync(): number | Promise<number> {
     const metadata = this.getMetadataSync();
     if (metadata) {
-      return this._filteredIndices ? this._filteredIndices.length : this.getEstimatedCountSync();
+      return this._filteredIndices
+        ? this._filteredIndices.length
+        : this.getEstimatedCountSync();
     }
     return this.getCount().catch(() => 0); // Have to catch here to avoid unhandled promise rejection
   }
@@ -137,7 +147,10 @@ class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: strin
     }
     return mappedIndex < this._data.length;
   }
-  getItem(index: number, skipPreload = false): TRecord | Promise<TRecord | null> {
+  getItem(
+    index: number,
+    skipPreload = false,
+  ): TRecord | Promise<TRecord | null> {
     const mappedIndex = this._mapItemIndex(index);
     if (mappedIndex === null) {
       return this.getCount()
@@ -182,7 +195,9 @@ class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: strin
     if (requestedIndex < 0 || requestedIndex >= count) {
       return null;
     }
-    return this._filteredIndices ? this._filteredIndices[requestedIndex] : requestedIndex;
+    return this._filteredIndices
+      ? this._filteredIndices[requestedIndex]
+      : requestedIndex;
   }
   async _loadNextChunk(): Promise<unknown> {
     if (this._loadingPromise) {
@@ -201,7 +216,12 @@ class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: strin
       } else {
         const metadata = await this._metadata;
         if (metadata) {
-          console.warn("Fixing incorrect item count: " + metadata?.count + " -> " + this._data.length);
+          console.warn(
+            "Fixing incorrect item count: " +
+              metadata?.count +
+              " -> " +
+              this._data.length,
+          );
           metadata.count = this._data.length;
           this._metadata = metadata;
         }
@@ -214,12 +234,17 @@ class DataProviderImpl<TMetadata extends Metadata, TRecord extends { uuid: strin
 
 export type ListingDataProvider = DataProviderImpl<Metadata>;
 export type PlayerDataProvider = DataProviderImpl<PlayerMetadata>;
-export const DUMMY_DATA_PROVIDER = new DataProviderImpl<Metadata>(new DummyDataLoader());
+export const DUMMY_DATA_PROVIDER = new DataProviderImpl<Metadata>(
+  new DummyDataLoader(),
+);
 
 export type DataProvider = ListingDataProvider | PlayerDataProvider;
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const DataProvider = Object.freeze({
-  createListing(date: dayjs.ConfigType, mode: GameMode | null): ListingDataProvider {
+  createListing(
+    date: dayjs.ConfigType,
+    mode: GameMode | null,
+  ): ListingDataProvider {
     return new DataProviderImpl(new ListingDataLoader(date, mode));
   },
   createHightlight(mode: GameMode | undefined): ListingDataProvider {
@@ -230,21 +255,29 @@ export const DataProvider = Object.freeze({
     startDate: dayjs.ConfigType | null,
     endDate: dayjs.ConfigType | null,
     limit: number | null,
-    mode: GameMode[]
+    mode: GameMode[],
   ): PlayerDataProvider {
     if (limit) {
-      return new DataProviderImpl(new FixedNumberPlayerDataLoader(playerId, limit, mode));
+      return new DataProviderImpl(
+        new FixedNumberPlayerDataLoader(playerId, limit, mode),
+      );
     }
     return new DataProviderImpl(
       new PlayerDataLoader(
         playerId,
         startDate ? dayjs(startDate) : undefined,
         endDate ? dayjs(endDate) : undefined,
-        mode
-      )
+        mode,
+      ),
     );
   },
-  createFilteredPlayer(playerId: string, loadRecord: () => Promise<GameRecord[]>, mode: GameMode[]): PlayerDataProvider {
-    return new DataProviderImpl(new FilteredPlayerDataLoader(playerId, loadRecord, mode));
+  createFilteredPlayer(
+    playerId: string,
+    loadRecord: () => Promise<GameRecord[]>,
+    mode: GameMode[],
+  ): PlayerDataProvider {
+    return new DataProviderImpl(
+      new FilteredPlayerDataLoader(playerId, loadRecord, mode),
+    );
   },
 });

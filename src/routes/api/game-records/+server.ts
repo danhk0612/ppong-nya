@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { requireGoogleApiSession } from "$lib/server/auth";
+import { requireApiSession } from "$lib/server/auth";
 import {
   optionalDate,
   optionalInt,
@@ -96,7 +96,7 @@ function parsePlayers(body: Record<string, unknown>) {
 }
 
 export const GET: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const records = await db.gameRecord.findMany({
     where: { userId: session.user.id },
     include: { players: { orderBy: { seat: "asc" } }, notes: true },
@@ -108,7 +108,7 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const mode = requireGameMode(body);
   const startedAt = optionalDate(body, "startedAt") ?? new Date();
@@ -133,7 +133,7 @@ export const POST: RequestHandler = async (event) => {
 };
 
 export const PATCH: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "대국 기록 ID");
   const players = parsePlayers(body);
@@ -176,7 +176,7 @@ export const PATCH: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "대국 기록 ID");
 

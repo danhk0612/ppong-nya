@@ -20,6 +20,14 @@
   import { formatDate, formatDateTime, formatNumber, ko } from "$lib/i18n";
 
   let { data } = $props();
+  function initialCredentialEmail() {
+    return data.user.email ?? "";
+  }
+
+  function initialCredentialName() {
+    return data.user.name ?? "";
+  }
+
   const user = $derived(data.user);
   const session = $derived(data.session);
   const accounts = $derived(data.accounts);
@@ -46,6 +54,10 @@
   let noteTitle = $state("");
   let noteBody = $state("");
   let noteGameRecordId = $state("");
+  let credentialEmail = $state(initialCredentialEmail());
+  let credentialName = $state(initialCredentialName());
+  let currentPassword = $state("");
+  let newPassword = $state("");
 
   async function loadUserData() {
     loading = true;
@@ -111,6 +123,29 @@
     }, ko.account.messages.noteSaved);
   }
 
+  async function submitCredentialChange() {
+    await runAction(async () => {
+      const response = await fetch("/api/account/credentials", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: credentialEmail,
+          name: credentialName,
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => undefined);
+        throw new Error(payload?.message ?? "계정 정보를 변경하지 못했습니다.");
+      }
+
+      currentPassword = "";
+      newPassword = "";
+    }, "계정 이메일 아이디와 비밀번호를 변경했습니다.");
+  }
+
   async function removeItem(remove: () => Promise<unknown>, successMessage: string) {
     await runAction(remove, successMessage);
   }
@@ -161,6 +196,26 @@
       <SummaryTile label={ko.account.userId} value={user.id} monospace />
       <SummaryTile label={ko.account.role} value={user.role} />
     </div>
+  </Card>
+
+  {#if user.passwordChangeRequired}
+    <Card class="mt-6 border-rose-200 bg-rose-50/80" title="관리자 최초 로그인 보안 설정">
+      <p class="text-sm leading-6 text-rose-700">기본 관리자 계정으로 로그인했습니다. 계속 사용하려면 이메일 아이디와 비밀번호를 반드시 새 값으로 변경해 주세요.</p>
+    </Card>
+  {/if}
+
+  <Card class="mt-6" title="이메일 아이디 및 비밀번호 변경" eyebrow="Credentials">
+    <form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submitCredentialChange(); }}>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <Input bind:value={credentialEmail} type="email" label="이메일 아이디" autocomplete="email" required />
+        <Input bind:value={credentialName} label="이름" autocomplete="name" placeholder="표시 이름" />
+        {#if !user.passwordChangeRequired}
+          <Input bind:value={currentPassword} type="password" label="현재 비밀번호" autocomplete="current-password" required />
+        {/if}
+        <Input bind:value={newPassword} type="password" label="새 비밀번호" autocomplete="new-password" hint="영문자와 숫자를 포함해 8자 이상 입력해 주세요." required />
+      </div>
+      <Button class="w-full sm:w-auto" type="submit">{user.passwordChangeRequired ? "필수 변경 완료" : "계정 정보 변경"}</Button>
+    </form>
   </Card>
 
   <Card class="mt-6 border-brand-100 bg-brand-50/80" title={ko.account.scopeTitle}>

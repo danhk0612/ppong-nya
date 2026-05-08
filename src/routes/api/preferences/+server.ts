@@ -1,4 +1,4 @@
-import { requireGoogleApiSession } from "$lib/server/auth";
+import { requireApiSession } from "$lib/server/auth";
 import {
   prismaJsonOrNull,
   readJsonObject,
@@ -10,7 +10,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const preferences = await db.userPreference.findMany({
     where: { userId: session.user.id },
     orderBy: { key: "asc" },
@@ -20,7 +20,7 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const key = requireString(body, "key", "설정 키");
   const value = prismaJsonOrNull(body, "value");
@@ -35,7 +35,7 @@ export const POST: RequestHandler = async (event) => {
 };
 
 export const PATCH: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "설정 ID");
   const value = prismaJsonOrNull(body, "value");
@@ -56,7 +56,7 @@ export const PATCH: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "설정 ID");
 
