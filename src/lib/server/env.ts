@@ -13,14 +13,12 @@ function requireEnv(name: string, value: string | undefined) {
 export const privateEnv = {
   databaseUrl: requireEnv("DATABASE_URL", privateRuntimeEnv.DATABASE_URL),
   authSecret: requireEnv("AUTH_SECRET", privateRuntimeEnv.AUTH_SECRET),
-  googleClientId: requireEnv(
-    "GOOGLE_CLIENT_ID",
-    privateRuntimeEnv.GOOGLE_CLIENT_ID,
-  ),
-  googleClientSecret: requireEnv(
-    "GOOGLE_CLIENT_SECRET",
-    privateRuntimeEnv.GOOGLE_CLIENT_SECRET,
-  ),
+  googleClientId: privateRuntimeEnv.GOOGLE_CLIENT_ID,
+  googleClientSecret: privateRuntimeEnv.GOOGLE_CLIENT_SECRET,
+  defaultAdminEmail:
+    privateRuntimeEnv.DEFAULT_ADMIN_EMAIL || "admin@ppong-nya.local",
+  defaultAdminPassword:
+    privateRuntimeEnv.DEFAULT_ADMIN_PASSWORD || "ChangeMe123!",
 } as const;
 
 export const publicEnv = {

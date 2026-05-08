@@ -1,7 +1,8 @@
 import dayjs from "dayjs";
 
-import { GameRecord, GameRecordWithEvent } from "../../types/record";
-import { Metadata, PlayerMetadata, PlayerExtendedStats, MODE_BASE_POINT } from "../../types/metadata";
+import type { GameRecord, GameRecordWithEvent } from "../../types/record";
+import { PlayerMetadata, MODE_BASE_POINT } from "../../types/metadata";
+import type { Metadata, PlayerExtendedStats } from "../../types/metadata";
 import { apiCacheablePost, apiGet } from "../api";
 import { GameMode } from "../../types";
 import Conf from "../../../utils/conf";
@@ -31,12 +32,16 @@ export class RecentHighlightDataLoader implements DataLoader<Metadata> {
   _index: number;
   constructor(mode: GameMode | undefined, numItems = 100) {
     this._index = 0;
-    this._data = apiGet<GameRecordWithEvent[]>(`recent_highlight_games?limit=${numItems}&mode=${mode || ""}`)
+    this._data = apiGet<GameRecordWithEvent[]>(
+      `recent_highlight_games?limit=${numItems}&mode=${mode || ""}`,
+    )
       .then((data) => {
         if (data.every((x) => x.uuid)) {
           return data;
         }
-        return apiGet<GameRecordWithEvent[]>(`games_by_id/${data.map((x) => x._id).join(",")}`).then((records) => {
+        return apiGet<GameRecordWithEvent[]>(
+          `games_by_id/${data.map((x) => x._id).join(",")}`,
+        ).then((records) => {
           const recordMap = {} as { [key: string]: GameRecordWithEvent };
           records.forEach((x) => (recordMap[x._id || ""] = x));
           return data.map((x) => ({ ...x, ...recordMap[x._id || ""] }));
@@ -70,7 +75,9 @@ export class ListingDataLoader implements DataLoader<Metadata> {
   constructor(date: dayjs.ConfigType, mode: GameMode | null) {
     this._date = dayjs(date).startOf("day");
     const cursor = Math.floor(new Date().getTime() / 120000) * 120000;
-    this._cursor = dayjs(Math.min(this._date.clone().add(1, "day").valueOf() - 1, cursor));
+    this._cursor = dayjs(
+      Math.min(this._date.clone().add(1, "day").valueOf() - 1, cursor),
+    );
     this._modeString = mode && mode.toString() !== "0" ? mode.toString() : "";
   }
   getEstimatedChunkSize() {
@@ -86,13 +93,17 @@ export class ListingDataLoader implements DataLoader<Metadata> {
     return { count: +Infinity };
   }
   async getNextChunk(): Promise<GameRecord[]> {
-    if (this._cursor.isBefore(this._date) || this._cursor.isSame(this._date) || this.shouldReturnEmptyResult()) {
+    if (
+      this._cursor.isBefore(this._date) ||
+      this._cursor.isSame(this._date) ||
+      this.shouldReturnEmptyResult()
+    ) {
       return [];
     }
     const chunk = await apiGet<GameRecord[]>(
       `games/${this._cursor.valueOf()}/${this._date.valueOf()}?limit=${CHUNK_SIZE}&descending=true&mode=${
         this._modeString
-      }`
+      }`,
     );
     if (chunk.length) {
       this._cursor = dayjs(chunk[chunk.length - 1].startTime * 1000 - 1);
@@ -103,12 +114,18 @@ export class ListingDataLoader implements DataLoader<Metadata> {
   }
 }
 
-function processExtendedStats(stats: PlayerMetadata): (value: PlayerExtendedStats) => PlayerExtendedStats {
+function processExtendedStats(
+  stats: PlayerMetadata,
+): (value: PlayerExtendedStats) => PlayerExtendedStats {
   return (extendedStats) => {
     const gameBasePoint = MODE_BASE_POINT[Conf.availableModes[0]];
     if (gameBasePoint) {
       extendedStats.局收支 =
-        ((stats.rank_rates.reduce((acc, x, index) => acc + x * stats.rank_avg_score[index], 0) - gameBasePoint) *
+        ((stats.rank_rates.reduce(
+          (acc, x, index) => acc + x * stats.rank_avg_score[index],
+          0,
+        ) -
+          gameBasePoint) *
           stats.count) /
         extendedStats.count;
     }
@@ -125,7 +142,12 @@ export class PlayerDataLoader implements DataLoader<PlayerMetadata> {
   _mode: GameMode[];
   _initialParams: string;
   _tag: string;
-  constructor(playerId: string, startDate?: dayjs.Dayjs, endDate?: dayjs.Dayjs, mode = [] as GameMode[]) {
+  constructor(
+    playerId: string,
+    startDate?: dayjs.Dayjs,
+    endDate?: dayjs.Dayjs,
+    mode = [] as GameMode[],
+  ) {
     this._playerId = playerId;
     this._startDate = startDate || dayjs("2010-01-01T00:00:00.000Z");
     this._endDate = endDate || dayjs().endOf("minute");
@@ -152,10 +174,12 @@ export class PlayerDataLoader implements DataLoader<PlayerMetadata> {
       return Promise.reject(new Error("Invalid date range"));
     }
     const timeTag = Math.floor(new Date().getTime() / 1000 / 60 / 60);
-    const stats = await apiGet<PlayerMetadata>(`player_stats/${this._initialParams}&tag=${timeTag}`);
+    const stats = await apiGet<PlayerMetadata>(
+      `player_stats/${this._initialParams}&tag=${timeTag}`,
+    );
     if (this._mode.length || !Conf.availableModes.length) {
       stats.extended_stats = apiGet<PlayerExtendedStats>(
-        `player_extended_stats/${this._initialParams}&tag=${timeTag}`
+        `player_extended_stats/${this._initialParams}&tag=${timeTag}`,
       ).then(processExtendedStats(stats));
       stats.extended_stats.catch((e) => {
         console.error("Failed to get extended stats:", e);
@@ -165,8 +189,13 @@ export class PlayerDataLoader implements DataLoader<PlayerMetadata> {
       stats.count = 0;
     }
     let crossStats = stats;
-    if (this._mode.length && !Conf.availableModes.every((x) => this._mode.includes(x))) {
-      crossStats = await apiGet<PlayerMetadata>(`player_stats/${this._getParams([])}&tag=${timeTag}`);
+    if (
+      this._mode.length &&
+      !Conf.availableModes.every((x) => this._mode.includes(x))
+    ) {
+      crossStats = await apiGet<PlayerMetadata>(
+        `player_stats/${this._getParams([])}&tag=${timeTag}`,
+      );
     }
     stats.cross_stats = {
       id: crossStats.id,
@@ -174,8 +203,13 @@ export class PlayerDataLoader implements DataLoader<PlayerMetadata> {
       max_level: crossStats.max_level,
       played_modes:
         crossStats.played_modes
-          ?.map((x) => (typeof x === "string" ? (parseInt(x, 10) as GameMode) : x))
-          ?.sort((a, b) => Conf.availableModes.indexOf(a) - Conf.availableModes.indexOf(b)) || [],
+          ?.map((x) =>
+            typeof x === "string" ? (parseInt(x, 10) as GameMode) : x,
+          )
+          ?.sort(
+            (a, b) =>
+              Conf.availableModes.indexOf(a) - Conf.availableModes.indexOf(b),
+          ) || [],
       nickname: crossStats.nickname,
       count: crossStats.count,
     };
@@ -183,7 +217,10 @@ export class PlayerDataLoader implements DataLoader<PlayerMetadata> {
     return stats;
   }
   async getNextChunk(): Promise<GameRecord[]> {
-    if (this._cursor.isBefore(this._startDate) || this._cursor.isSame(this._startDate)) {
+    if (
+      this._cursor.isBefore(this._startDate) ||
+      this._cursor.isSame(this._startDate)
+    ) {
       return [];
     }
     if (!this._mode.length && Conf.availableModes.length) {
@@ -192,7 +229,7 @@ export class PlayerDataLoader implements DataLoader<PlayerMetadata> {
     const chunk = await apiGet<GameRecord[]>(
       `player_records/${this._playerId}/${this._cursor.valueOf()}/${this._startDate.valueOf()}?limit=${
         CHUNK_SIZE + ((parseInt(this._tag, 10) || 0) % CHUNK_SIZE)
-      }&mode=${this._mode}&descending=true&tag=${this._tag}`
+      }&mode=${this._mode}&descending=true&tag=${this._tag}`,
     );
     if (chunk.length) {
       this._cursor = dayjs(chunk[chunk.length - 1].startTime * 1000 - 1);
@@ -206,11 +243,17 @@ export class PlayerDataLoader implements DataLoader<PlayerMetadata> {
 export class FilteredPlayerDataLoader implements DataLoader<PlayerMetadata> {
   private _recordPromise: Promise<GameRecord[]> | GameRecord[] | null = null;
   private _chunkReturned = false;
-  constructor(private _playerId: string, private _loadRecord: () => Promise<GameRecord[]>, private _mode: GameMode[]) {
+  constructor(
+    private _playerId: string,
+    private _loadRecord: () => Promise<GameRecord[]>,
+    private _mode: GameMode[],
+  ) {
     if (!_mode.length) {
       throw new Error("No mode");
     }
-    _mode.sort((a, b) => Conf.availableModes.indexOf(a) - Conf.availableModes.indexOf(b));
+    _mode.sort(
+      (a, b) => Conf.availableModes.indexOf(a) - Conf.availableModes.indexOf(b),
+    );
   }
   getEstimatedChunkSize() {
     return CHUNK_SIZE;
@@ -231,12 +274,18 @@ export class FilteredPlayerDataLoader implements DataLoader<PlayerMetadata> {
     }
     const keys = records.map((x) => x.startTime);
     keys.sort((a, b) => b - a);
-    const stats = await apiCacheablePost<PlayerMetadata>(`player_stats/${this._playerId}`, { keys, modes: this._mode });
+    const stats = await apiCacheablePost<PlayerMetadata>(
+      `player_stats/${this._playerId}`,
+      { keys, modes: this._mode },
+    );
     if (this._mode.length || !Conf.availableModes.length) {
-      stats.extended_stats = apiCacheablePost<PlayerExtendedStats>(`player_extended_stats/${this._playerId}`, {
-        keys,
-        modes: this._mode,
-      }).then(processExtendedStats(stats));
+      stats.extended_stats = apiCacheablePost<PlayerExtendedStats>(
+        `player_extended_stats/${this._playerId}`,
+        {
+          keys,
+          modes: this._mode,
+        },
+      ).then(processExtendedStats(stats));
       stats.extended_stats.catch((e) => {
         console.error("Failed to get extended stats:", e);
       });
@@ -248,8 +297,13 @@ export class FilteredPlayerDataLoader implements DataLoader<PlayerMetadata> {
       max_level: crossStats.max_level,
       played_modes:
         crossStats.played_modes
-          ?.map((x) => (typeof x === "string" ? (parseInt(x, 10) as GameMode) : x))
-          ?.sort((a, b) => Conf.availableModes.indexOf(a) - Conf.availableModes.indexOf(b)) || [],
+          ?.map((x) =>
+            typeof x === "string" ? (parseInt(x, 10) as GameMode) : x,
+          )
+          ?.sort(
+            (a, b) =>
+              Conf.availableModes.indexOf(a) - Conf.availableModes.indexOf(b),
+          ) || [],
       nickname: crossStats.nickname,
       count: crossStats.count,
     };
@@ -287,7 +341,7 @@ export class FixedNumberPlayerDataLoader extends PlayerDataLoader {
     const chunk = await apiGet<GameRecord[]>(
       `player_records/${this._playerId}/${this._endDate.valueOf()}/${this._startDate.valueOf()}?limit=${
         this._limit
-      }&mode=${this._mode}&descending=true`
+      }&mode=${this._mode}&descending=true`,
     );
     if (!chunk.length) {
       throw new Error("No data");

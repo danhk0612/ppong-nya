@@ -1,4 +1,5 @@
 import { redirect } from "@sveltejs/kit";
+import { privateEnv } from "$lib/server/env";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async (event) => {
@@ -8,5 +9,9 @@ export const load: PageServerLoad = async (event) => {
     redirect(303, "/account");
   }
 
-  return {};
+  return {
+    googleEnabled: Boolean(
+      privateEnv.googleClientId && privateEnv.googleClientSecret,
+    ),
+  };
 };

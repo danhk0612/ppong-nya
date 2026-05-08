@@ -16,6 +16,8 @@ declare module "@auth/sveltekit" {
     user?: {
       id: string;
       role: UserRole;
+      passwordChangeRequired: boolean;
+      passwordChangeRequired: boolean;
       name?: string | null;
       email?: string | null;
       image?: string | null;

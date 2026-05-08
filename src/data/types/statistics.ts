@@ -1,6 +1,10 @@
 import { AccountZone, GameMode } from ".";
-import { WithLastModified } from "../source/api";
-import { PlayerMetadataLite2, PlayerExtendedStats, RankRates } from "./metadata";
+import type { WithLastModified } from "../source/api";
+import type {
+  PlayerMetadataLite2,
+  PlayerExtendedStats,
+  RankRates,
+} from "./metadata";
 export type RankRateBySeat = {
   [modeId: string]: {
     [rankId: number]: RankRates;

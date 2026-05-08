@@ -1,4 +1,4 @@
-import { requireGoogleApiSession } from "$lib/server/auth";
+import { requireApiSession } from "$lib/server/auth";
 import {
   optionalPrismaJson,
   optionalString,
@@ -27,7 +27,7 @@ async function verifyOwnedGameRecord(userId: string, gameRecordId?: string) {
 }
 
 export const GET: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const notes = await db.gameNote.findMany({
     where: { userId: session.user.id },
     include: {
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const gameRecordId = await verifyOwnedGameRecord(
     session.user.id,
@@ -63,7 +63,7 @@ export const POST: RequestHandler = async (event) => {
 };
 
 export const PATCH: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "메모 ID");
   await requireOwnedResource(
@@ -92,7 +92,7 @@ export const PATCH: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-  const session = await requireGoogleApiSession(event);
+  const session = await requireApiSession(event);
   const body = await readJsonObject(event);
   const id = requireString(body, "id", "메모 ID");
 

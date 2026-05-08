@@ -11,10 +11,14 @@ export const { handle } = SvelteKitAuth({
   trustHost: true,
   useSecureCookies: !dev,
   providers: [
-    Google({
-      clientId: privateEnv.googleClientId,
-      clientSecret: privateEnv.googleClientSecret,
-    }),
+    ...(privateEnv.googleClientId && privateEnv.googleClientSecret
+      ? [
+          Google({
+            clientId: privateEnv.googleClientId,
+            clientSecret: privateEnv.googleClientSecret,
+          }),
+        ]
+      : []),
   ],
   session: {
     strategy: "database",
@@ -36,8 +40,15 @@ export const { handle } = SvelteKitAuth({
     },
     session({ session, user }) {
       if (session.user && user) {
+        const databaseUser = user as typeof user & {
+          passwordChangeRequired?: boolean;
+        };
+
         session.user.id = user.id;
         session.user.role = user.role;
+        session.user.passwordChangeRequired = Boolean(
+          databaseUser.passwordChangeRequired,
+        );
       }
 
       return session;

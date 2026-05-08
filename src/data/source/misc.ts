@@ -3,23 +3,39 @@
 import dayjs from "dayjs";
 
 import { apiGet } from "./api";
-import { PlayerMetadataLite, PlayerExtendedStats, GameMode } from "../types";
-import { RankingTimeSpan, DeltaRankingResponse } from "../types";
-import { RankRateBySeat } from "../types";
-import { CareerRankingItem, CareerRankingType } from "../types/ranking";
-import { GlobalStatistics, FanStats, GlobalHistogram, LevelStatistics } from "../types/statistics";
+import { GameMode } from "../types";
+import type {
+  PlayerMetadataLite,
+  PlayerExtendedStats,
+  DeltaRankingResponse,
+  RankRateBySeat,
+} from "../types";
+import { RankingTimeSpan } from "../types";
+import { CareerRankingType } from "../types/ranking";
+import type { CareerRankingItem } from "../types/ranking";
+import type {
+  GlobalStatistics,
+  FanStats,
+  GlobalHistogram,
+  LevelStatistics,
+} from "../types/statistics";
 
-
-export type PlayerSearchResult = Pick<PlayerMetadataLite, "id" | "nickname" | "level"> & {
+export type PlayerSearchResult = Pick<
+  PlayerMetadataLite,
+  "id" | "nickname" | "level"
+> & {
   latest_timestamp: number;
 };
-export async function searchPlayer(prefix: string, limit = 20): Promise<PlayerSearchResult[]> {
+export async function searchPlayer(
+  prefix: string,
+  limit = 20,
+): Promise<PlayerSearchResult[]> {
   prefix = prefix.trim();
   if (!prefix) {
     return [];
   }
   const result = await apiGet<PlayerSearchResult[]>(
-    `search_player/${encodeURIComponent(prefix)}?limit=${limit}&tag=all`
+    `search_player/${encodeURIComponent(prefix)}?limit=${limit}&tag=all`,
   );
   return result || [];
 }
@@ -28,7 +44,7 @@ export async function getExtendedStats(
   playerId: number,
   startDate?: dayjs.ConfigType,
   endDate?: dayjs.ConfigType,
-  mode = ""
+  mode = "",
 ): Promise<PlayerExtendedStats> {
   let datePath = "";
   if (startDate) {
@@ -37,35 +53,49 @@ export async function getExtendedStats(
       datePath += `/${dayjs(endDate).valueOf()}`;
     }
   }
-  return await apiGet<PlayerExtendedStats>(`player_extended_stats/${playerId}${datePath}?mode=${mode}`);
+  return await apiGet<PlayerExtendedStats>(
+    `player_extended_stats/${playerId}${datePath}?mode=${mode}`,
+  );
 }
 
-export async function getDeltaRanking(timespan: RankingTimeSpan): Promise<DeltaRankingResponse> {
+export async function getDeltaRanking(
+  timespan: RankingTimeSpan,
+): Promise<DeltaRankingResponse> {
   return await apiGet<DeltaRankingResponse>(`player_delta_ranking/${timespan}`);
 }
 
 export async function getCareerRanking(
   type: CareerRankingType,
   modeId?: string,
-  minGames?: number
+  minGames?: number,
 ): Promise<CareerRankingItem[]> {
   minGames = minGames || 300;
   const suffix = minGames === 300 ? "" : `_${minGames}`;
-  return await apiGet<CareerRankingItem[]>(`career_ranking/${type + suffix}?mode=${modeId || ""}`);
+  return await apiGet<CareerRankingItem[]>(
+    `career_ranking/${type + suffix}?mode=${modeId || ""}`,
+  );
 }
 
-export async function getGlobalStatistics(modes: GameMode[]): Promise<GlobalStatistics> {
-  return await apiGet<GlobalStatistics>(`global_statistics_2?mode=${modes.join(".")}`);
+export async function getGlobalStatistics(
+  modes: GameMode[],
+): Promise<GlobalStatistics> {
+  return await apiGet<GlobalStatistics>(
+    `global_statistics_2?mode=${modes.join(".")}`,
+  );
 }
-export async function getGlobalStatisticsYear(modes: GameMode[]): Promise<GlobalStatistics> {
-  return await apiGet<GlobalStatistics>(`global_statistics_year?mode=${modes.join(".")}`);
+export async function getGlobalStatisticsYear(
+  modes: GameMode[],
+): Promise<GlobalStatistics> {
+  return await apiGet<GlobalStatistics>(
+    `global_statistics_year?mode=${modes.join(".")}`,
+  );
 }
 export async function getGlobalStatisticsSnapshot(
   date: dayjs.ConfigType,
-  modes: GameMode[]
+  modes: GameMode[],
 ): Promise<GlobalStatistics> {
   return await apiGet<GlobalStatistics>(
-    `global_statistics_snapshot/${dayjs(date).format("YYYY-MM-DD")}?mode=${modes.join(".")}`
+    `global_statistics_snapshot/${dayjs(date).format("YYYY-MM-DD")}?mode=${modes.join(".")}`,
   );
 }
 export async function getLevelStatistics(): Promise<LevelStatistics> {
