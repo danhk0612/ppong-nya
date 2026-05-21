@@ -18,7 +18,7 @@
 
 | 변수                   | 예시                                            | 설명                                                                                                                        |
 | ---------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | `mysql://ppong_nya:password@db:3306/ppong_nya`  | 애플리케이션에서 사용할 MariaDB 연결 문자열입니다.                                                                          |
+| `DATABASE_URL`         | `mysql://ppong_nya:password@mariadb.example.com:3306/ppong_nya`  | 애플리케이션에서 사용할 외부 MariaDB 연결 문자열입니다.                                                                     |
 | `AUTH_SECRET`          | 긴 랜덤 문자열                                  | 인증 상태 서명에 사용할 시크릿입니다. 반드시 시크릿으로 보관하고 신중하게 교체하세요.                                       |
 | `GOOGLE_CLIENT_ID`     | `1234567890-example.apps.googleusercontent.com` | Google OAuth 클라이언트 ID입니다.                                                                                           |
 | `GOOGLE_CLIENT_SECRET` | `GOCSPX-example`                                | Google OAuth 클라이언트 시크릿입니다. 반드시 시크릿으로 보관하세요.                                                         |
@@ -72,8 +72,10 @@ docker run --rm \
 
 `docker-compose.yml`은 두 개의 서비스를 실행합니다.
 
+- `migrate`: 외부 DB에 Prisma 마이그레이션을 적용합니다.
 - `app`: 이 저장소를 빌드하고 SvelteKit Node 서버를 <http://localhost:3000>에 노출합니다.
-- `db`: MariaDB 11.4를 시작하고 로컬 확인을 위해 `localhost:3306`으로 노출합니다.
+
+> 이 저장소는 자체 DB 컨테이너를 실행하지 않습니다. `DATABASE_URL`에는 항상 외부 DB 주소를 넣어야 합니다.
 
 시크릿을 셸에 직접 입력하지 않으려면 로컬 `.env` 파일을 생성하세요.
 
@@ -82,6 +84,7 @@ GOOGLE_CLIENT_ID=replace-me
 GOOGLE_CLIENT_SECRET=replace-me
 AUTH_SECRET=replace-me-with-a-long-random-string
 PUBLIC_SITE_URL=http://localhost:3000
+DATABASE_URL=mysql://ppong_nya:strong-password@mariadb.example.com:3306/ppong_nya
 ```
 
 그다음 다음 명령으로 실행합니다.
@@ -90,14 +93,12 @@ PUBLIC_SITE_URL=http://localhost:3000
 docker compose up --build
 ```
 
-Compose 예시는 앱 컨테이너에 아래 공개 사이트 URL과 데이터베이스 URL을 주입합니다.
+Compose 예시는 앱/마이그레이션 컨테이너에 아래 공개 사이트 URL과 데이터베이스 URL을 주입합니다.
 
 ```env
 PUBLIC_SITE_URL=http://localhost:3000
-DATABASE_URL=mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya
+DATABASE_URL=mysql://ppong_nya:strong-password@mariadb.example.com:3306/ppong_nya
 ```
-
-Compose 네트워크 안에서는 서비스 이름인 `db`를 호스트명으로 사용합니다. 호스트 머신에서 직접 접속할 때만 `localhost`를 사용하세요.
 
 ## 운영 배포 참고 사항
 

@@ -92,33 +92,27 @@ cp .env.example .env
    cp .env.example .env
    ```
 
-3. MariaDB를 실행합니다. Docker Compose의 `db` 서비스만 사용할 수 있습니다.
-
-   ```bash
-   docker compose up -d db
-   ```
-
-4. `.env`의 `DATABASE_URL`을 로컬 DB에 맞춥니다.
+3. `.env`의 `DATABASE_URL`을 외부 DB에 맞춥니다.
 
    ```env
    DATABASE_URL="mysql://ppong_nya:ppong_nya_password@localhost:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10"
    PUBLIC_SITE_URL="http://localhost:5173"
    ```
 
-5. Prisma Client를 생성하고 개발용 마이그레이션을 적용합니다.
+4. Prisma Client를 생성하고 개발용 마이그레이션을 적용합니다.
 
    ```bash
    npm run db:generate
    npm run db:migrate:dev
    ```
 
-6. 개발 서버를 실행합니다.
+5. 개발 서버를 실행합니다.
 
    ```bash
    npm run dev
    ```
 
-7. 브라우저에서 `http://localhost:5173`에 접속합니다.
+6. 브라우저에서 `http://localhost:5173`에 접속합니다.
 
 ## MariaDB/Prisma 설정
 
@@ -134,21 +128,7 @@ npm run db:push           # 스키마를 DB에 직접 반영
 npm run db:studio         # Prisma Studio 실행
 ```
 
-로컬 Docker Compose DB 기본값은 다음과 같습니다.
-
-| 항목         | 값                                            |
-| ------------ | --------------------------------------------- |
-| 데이터베이스 | `ppong_nya`                                   |
-| 사용자       | `ppong_nya`                                   |
-| 비밀번호     | `ppong_nya_password`                          |
-| 호스트       | 로컬 개발: `localhost`, Compose 내부 앱: `db` |
-| 포트         | `3306`                                        |
-
-Compose 내부 앱에서 사용하는 연결 문자열 예시는 다음과 같습니다.
-
-```env
-DATABASE_URL="mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya"
-```
+이 프로젝트는 자체 DB 컨테이너를 제공하지 않으므로, 로컬/배포 모두 외부 MariaDB/MySQL 접속 정보를 `DATABASE_URL`로 직접 주입해야 합니다.
 
 ## Google OAuth 설정
 
@@ -195,7 +175,7 @@ DATABASE_URL="mysql://ppong_nya:ppong_nya_password@db:3306/ppong_nya"
 
 ## Docker 실행
 
-전체 서비스를 Docker Compose로 실행할 수 있습니다.
+애플리케이션을 Docker Compose로 실행할 수 있습니다. (DB는 외부 서비스 사용)
 
 ```bash
 AUTH_SECRET="$(openssl rand -base64 32)" \
@@ -221,7 +201,7 @@ docker run --rm -p 3000:3000 \
   -e PORT=3000 \
   -e ORIGIN=http://localhost:3000 \
   -e PUBLIC_SITE_URL=http://localhost:3000 \
-  -e DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/ppong_nya" \
+  -e DATABASE_URL="mysql://USER:PASSWORD@EXTERNAL_DB_HOST:3306/ppong_nya" \
   -e AUTH_SECRET="replace-with-a-long-random-secret" \
   -e GOOGLE_CLIENT_ID="replace-with-google-client-id.apps.googleusercontent.com" \
   -e GOOGLE_CLIENT_SECRET="replace-with-google-client-secret" \
