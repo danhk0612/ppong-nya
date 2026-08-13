@@ -1,7 +1,7 @@
 {
   "name": "ppong-nya",
   "version": "1.0.0",
-  "homepage": "https://ppong-nya.com",
+  "homepage": "https://ppong-nya.mydepot.kr",
   "description": "퐁냐(ppong-nya): Korean Mahjong Soul records, rankings, and statistics hub built with SvelteKit",
   "keywords": [
     "sveltekit",
@@ -19,7 +19,8 @@
     "@prisma/client": "^6.0.0",
     "dayjs": "^1.11.11",
     "i18next": "^23.16.8",
-    "i18next-browser-languagedetector": "^8.0.0"
+    "i18next-browser-languagedetector": "^8.0.0",
+    "prisma": "^6.0.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.1",
@@ -28,7 +29,6 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
-    "prisma": "^6.0.0",
     "svelte": "^5.15.0",
     "svelte-check": "^4.1.1",
     "tailwindcss": "^3.4.17",

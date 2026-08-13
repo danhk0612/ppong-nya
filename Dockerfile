@@ -32,10 +32,12 @@ RUN if [ ! -f package-lock.json ]; then npm install --package-lock-only --ignore
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=build /app/build ./build
+COPY --from=build /app/prisma ./prisma
+
+USER node
 
 EXPOSE 3000
 
-# Inject runtime configuration such as DATABASE_URL, GOOGLE_CLIENT_ID,
-# GOOGLE_CLIENT_SECRET, AUTH_SECRET, PUBLIC_SITE_URL, and optional ORIGIN with `docker run -e`,
-# Docker Compose `environment`, or an orchestrator secret manager.
+# The same image serves the application and runs `prisma migrate deploy` from
+# the one-shot migration service in the production Compose stack.
 CMD ["node", "build"]
