@@ -40,6 +40,9 @@ jobs:
           PUBLIC_SITE_URL: http://localhost:3000
         run: npm run build
 
+      - name: Verify the dynamic root is not shadowed
+        run: test ! -f build/client/index.html
+
       - name: Validate Docker Compose files
         run: |
           docker compose -f docker-compose.yml config > /dev/null
