@@ -228,7 +228,7 @@ docker compose --env-file .env -f compose.production.yml pull
 docker compose --env-file .env -f compose.production.yml up -d
 ```
 
-도메인, 인증서, DSM 역방향 프록시와 최초 관리자 로그인 절차는 NAS 배포 문서에 정리되어 있습니다.
+도메인, 인증서, DSM 역방향 프록시와 최초 관리자 로그인 절차는 [NAS 배포 문서](docs/nas-deployment.md)에 정리되어 있습니다. Oracle Cloud ARM과 Nginx Proxy Manager 구성은 [Oracle Cloud 배포 문서](docs/oracle-cloud-deployment.md)를 사용합니다.
 
 ## 테스트 및 검증 명령
 
