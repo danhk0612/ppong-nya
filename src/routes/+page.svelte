@@ -2,10 +2,21 @@
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
   import StatusBlock from "$lib/components/StatusBlock.svelte";
+  import PlayerSearch from "$lib/components/PlayerSearch.svelte";
   import { ko } from "$lib/i18n";
 
   const highlights = ko.home.highlights;
 </script>
+
+<section class="mx-auto max-w-4xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
+  <div class="rounded-card border border-white/80 bg-white/90 p-5 shadow-soft backdrop-blur sm:p-7">
+    <p class="text-sm font-black text-brand-600">4인전 플레이어 검색</p>
+    <h2 class="mt-2 text-2xl font-black tracking-tight text-ink-950 sm:text-3xl">작혼 닉네임으로 바로 찾기</h2>
+    <div class="mt-5">
+      <PlayerSearch />
+    </div>
+  </div>
+</section>
 
 <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:grid lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12 lg:px-8 lg:py-24">
   <div>
@@ -35,7 +46,7 @@
       </div>
       <div class="mt-5 grid gap-3 sm:grid-cols-2">
         {#each highlights as item}
-          <a id={item.id} class="block rounded-3xl bg-white/10 p-4 transition hover:-translate-y-0.5 hover:bg-white/15" href={item.id === "records" ? "/records" : `#${item.id}`}>
+          <a id={item.id} class="block rounded-3xl bg-white/10 p-4 transition hover:-translate-y-0.5 hover:bg-white/15" href={item.id === "records" ? "/records" : item.id === "player-search" ? "/players" : `#${item.id}`}>
             <p class="font-black text-white">{item.label}</p>
             <p class="mt-2 text-sm leading-6 text-ink-300">{item.description}</p>
           </a>

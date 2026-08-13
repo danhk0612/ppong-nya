@@ -3,16 +3,16 @@ import { db } from "$lib/server/db";
 import type { Prisma } from "@prisma/client";
 
 const DATA_MIRRORS = [
-  "https://data.ppong-nya.com/",
-  "https://1.data.ppong-nya.com/",
-  "https://2.data.ppong-nya.com/",
-  "https://4.data.ppong-nya.com/",
+  "https://5-data.amae-koromo.com/",
+  "https://1.data.amae-koromo.com/",
+  "https://2.data.amae-koromo.com/",
+  "https://4.data.amae-koromo.com/",
 ];
 const DEFAULT_API_SUFFIX = dev ? "api-test/v2/pl4/" : "api/v2/pl4/";
 const PROBE_TIMEOUT_MS = 15_000;
 const REQUEST_TIMEOUT_MS = 5_000;
 const MAX_CACHE_BODY_BYTES = 16 * 1024 * 1024;
-const PPONG_NYA_DOMAIN = "ppong-nya.com";
+const DEFAULT_PUBLIC_HOST = "ppong-nya.mydepot.kr";
 
 let selectedMirror = DATA_MIRRORS[0];
 let mirrorProbePromise: Promise<Response> | null = null;
@@ -21,7 +21,12 @@ type CachePolicy = {
   pattern: string;
   strategy: "external" | "database";
   cacheTtlSeconds: number | null;
-  cacheTable: "ExternalApiCache" | "GameRecord" | "PlayerSnapshot" | "StatisticsSnapshot" | null;
+  cacheTable:
+    | "ExternalApiCache"
+    | "GameRecord"
+    | "PlayerSnapshot"
+    | "StatisticsSnapshot"
+    | null;
   note: string;
 };
 
@@ -147,7 +152,8 @@ export const EXTERNAL_API_ENDPOINT_POLICIES = [
   },
 ] as const satisfies readonly CachePolicy[];
 
-export type ExternalApiEndpointPolicy = (typeof EXTERNAL_API_ENDPOINT_POLICIES)[number];
+export type ExternalApiEndpointPolicy =
+  (typeof EXTERNAL_API_ENDPOINT_POLICIES)[number];
 
 function normalizePath(path: string) {
   return path.replace(/^\/+/, "");
@@ -172,7 +178,10 @@ function isAllowedExternalPath(path: string) {
 
   return EXTERNAL_API_ENDPOINT_POLICIES.some(({ pattern }) => {
     const prefix = pattern.split(":")[0];
-    return normalizedPath === prefix.replace(/\/$/, "") || normalizedPath.startsWith(prefix);
+    return (
+      normalizedPath === prefix.replace(/\/$/, "") ||
+      normalizedPath.startsWith(prefix)
+    );
   });
 }
 
@@ -195,7 +204,10 @@ function getCachePolicy(path: string, method: string) {
   const normalizedPath = normalizePath(path);
   const policy = EXTERNAL_API_ENDPOINT_POLICIES.find(({ pattern }) => {
     const prefix = pattern.split(":")[0];
-    return normalizedPath === prefix.replace(/\/$/, "") || normalizedPath.startsWith(prefix);
+    return (
+      normalizedPath === prefix.replace(/\/$/, "") ||
+      normalizedPath.startsWith(prefix)
+    );
   });
 
   if (!policy?.cacheTtlSeconds || policy.pattern.startsWith("view_game")) {
@@ -205,7 +217,11 @@ function getCachePolicy(path: string, method: string) {
   return policy;
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}, timeout = REQUEST_TIMEOUT_MS) {
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeout = REQUEST_TIMEOUT_MS,
+) {
   const abortController = new AbortController();
   const timeoutToken = setTimeout(() => abortController.abort(), timeout);
 
@@ -228,10 +244,16 @@ async function fetchFromMirror(path: string, init: RequestInit) {
     }
   }
 
-  mirrorProbePromise = Promise.any(DATA_MIRRORS.map((mirror) => fetchWithTimeout(mirror + path, init, PROBE_TIMEOUT_MS).then((response) => {
-    selectedMirror = mirror;
-    return response;
-  })));
+  mirrorProbePromise = Promise.any(
+    DATA_MIRRORS.map((mirror) =>
+      fetchWithTimeout(mirror + path, init, PROBE_TIMEOUT_MS).then(
+        (response) => {
+          selectedMirror = mirror;
+          return response;
+        },
+      ),
+    ),
+  );
   mirrorProbePromise.finally(() => {
     mirrorProbePromise = null;
   });
@@ -249,8 +271,12 @@ async function readUsableCache(cacheKey: string) {
   return cached;
 }
 
-function responseFromCache(cached: NonNullable<Awaited<ReturnType<typeof readUsableCache>>>) {
-  const headers = new Headers((cached.responseHeaders as Record<string, string> | null) ?? {});
+function responseFromCache(
+  cached: NonNullable<Awaited<ReturnType<typeof readUsableCache>>>,
+) {
+  const headers = new Headers(
+    (cached.responseHeaders as Record<string, string> | null) ?? {},
+  );
   headers.delete("content-length");
   headers.set("content-type", "application/json");
   headers.set("x-ppong-nya-cache", "hit");
@@ -358,16 +384,21 @@ export async function fetchExternalApi(input: {
   const normalizedPath = normalizePath(input.path);
 
   if (!isAllowedExternalPath(normalizedPath)) {
-    return new Response(JSON.stringify({ message: "Unsupported external API endpoint." }), {
-      status: 404,
-      headers: { "content-type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ message: "Unsupported external API endpoint." }),
+      {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      },
+    );
   }
 
-  const apiSuffix = getApiSuffix(input.host || PPONG_NYA_DOMAIN);
+  const apiSuffix = getApiSuffix(input.host || DEFAULT_PUBLIC_HOST);
   const endpoint = `${apiSuffix}${normalizedPath}`;
   const cachePolicy = getCachePolicy(normalizedPath, method);
-  const cacheKey = cachePolicy ? buildCacheKey(method, endpoint, input.body) : null;
+  const cacheKey = cachePolicy
+    ? buildCacheKey(method, endpoint, input.body)
+    : null;
 
   if (cacheKey) {
     const cached = await readUsableCache(cacheKey).catch((error) => {

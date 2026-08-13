@@ -7,7 +7,7 @@
 
 ## 상위 host 및 proxy 경계
 
-브라우저는 `https://data.ppong-nya.com/` 또는 해당 mirror를 직접 호출하면 안 됩니다.
+브라우저는 `https://*.amae-koromo.com/` 데이터 mirror를 직접 호출하면 안 됩니다.
 클라이언트 데이터 helper는 반드시 내부 SvelteKit route인 `/api/external/*`를 호출해야
 하며, 이 route가 `src/lib/server/services/externalApi.ts`에 위임해 외부 API와 통신합니다.
 이 정책은 외부 API 접근을 서버 경계 안에 고정해 endpoint allow-list, 기존 mirror 목록,
