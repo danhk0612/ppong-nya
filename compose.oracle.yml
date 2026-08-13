@@ -1,0 +1,13 @@
+services:
+  app:
+    ports: !reset []
+    networks:
+      default:
+      proxy:
+        aliases:
+          - ppong-nya-app
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:?set PROXY_NETWORK in .env}
+    external: true

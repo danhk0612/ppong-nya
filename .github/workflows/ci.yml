@@ -44,3 +44,4 @@ jobs:
         run: |
           docker compose -f docker-compose.yml config > /dev/null
           docker compose --env-file .env.nas.example -f compose.production.yml config > /dev/null
+          docker compose --env-file .env.oracle.example -f compose.production.yml -f compose.oracle.yml config > /dev/null
