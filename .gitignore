@@ -10,6 +10,8 @@
 
 # production
 /build
+/.svelte-kit
+vite.config.ts.timestamp-*.mjs
 
 # misc
 .env

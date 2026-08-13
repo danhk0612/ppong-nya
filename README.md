@@ -27,7 +27,6 @@
 - 모바일 우선 카드/표 UI 컴포넌트
 - Docker 및 Docker Compose 기반 실행 구성
 
-
 ## 인증/초기 관리자 계정 동작
 
 이 프로젝트는 **Google OAuth 없이도 로그인 가능**합니다.
@@ -59,6 +58,7 @@
 ## 문서
 
 - 외부 API endpoint 인벤토리, 마이그레이션 계획, 그리고 클라이언트가 외부 API를 직접 호출하지 않고 내부 `/api/external/*`를 거쳐야 하는 정책은 [`docs/external-api-plan.md`](docs/external-api-plan.md)를 참고하세요.
+- Synology NAS 운영 배포 절차는 [`docs/nas-deployment.md`](docs/nas-deployment.md)를 참고하세요.
 
 ## 기술 스택
 
@@ -77,7 +77,7 @@
 - `Node.js >= 20.0.0`
 - `npm >= 10.0.0`
 - `Docker` 및 `Docker Compose` 플러그인
-- Google OAuth 클라이언트를 만들 수 있는 Google Cloud 프로젝트
+- Google OAuth를 사용할 경우 OAuth 클라이언트를 만들 수 있는 Google Cloud 프로젝트
 - 로컬 또는 원격 MariaDB/MySQL 데이터베이스
 
 ## 환경 변수
@@ -92,11 +92,11 @@ cp .env.example .env
 | ---------------------- | ------------ | ----------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`         | 필수         | 서버 전용   | `mysql://USER:PASSWORD@HOST:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10` | Prisma가 사용하는 MariaDB/MySQL 연결 문자열입니다.                                                                         |
 | `AUTH_SECRET`          | 필수         | 서버 전용   | `openssl rand -base64 32`로 생성한 긴 문자열                                                      | Auth.js/SvelteKitAuth 쿠키와 토큰 서명/암호화에 사용하는 비밀값입니다.                                                     |
-| `GOOGLE_CLIENT_ID`     | 필수         | 서버 전용   | `replace-with-google-client-id.apps.googleusercontent.com`                                        | Google OAuth 클라이언트 ID입니다.                                                                                          |
-| `GOOGLE_CLIENT_SECRET` | 필수         | 서버 전용   | `replace-with-google-client-secret`                                                               | Google OAuth 클라이언트 보안 비밀입니다.                                                                                   |
+| `GOOGLE_CLIENT_ID`     | 선택         | 서버 전용   | `replace-with-google-client-id.apps.googleusercontent.com`                                        | Google OAuth를 사용할 때 설정하는 클라이언트 ID입니다.                                                                     |
+| `GOOGLE_CLIENT_SECRET` | 선택         | 서버 전용   | `replace-with-google-client-secret`                                                               | Google OAuth를 사용할 때 설정하는 클라이언트 보안 비밀입니다.                                                              |
 | `PUBLIC_SITE_URL`      | 필수         | 공개        | `http://localhost:5173`                                                                           | 서비스의 기준 URL입니다. OAuth 리다이렉트 검증과 공개 런타임 설정에 사용됩니다.                                            |
 | `PUBLIC_SITE_NAME`     | 선택         | 공개        | `퐁냐`                                                                                            | 공개 사이트명입니다. 값이 없으면 코드에서 `퐁냐`를 기본값으로 사용합니다.                                                  |
-| `ORIGIN`               | 배포 시 권장 | 서버 런타임 | `https://ppong-nya.com`                                                                           | `@sveltejs/adapter-node` 실행 시 요청 origin 검증에 사용하는 값입니다. Docker 예시는 `http://localhost:3000`을 사용합니다. |
+| `ORIGIN`               | 배포 시 권장 | 서버 런타임 | `https://ppong-nya.mydepot.kr`                                                                    | `@sveltejs/adapter-node` 실행 시 요청 origin 검증에 사용하는 값입니다. Docker 예시는 `http://localhost:3000`을 사용합니다. |
 | `HOST`                 | 배포 시 권장 | 서버 런타임 | `0.0.0.0`                                                                                         | Node adapter 서버가 바인딩할 호스트입니다.                                                                                 |
 | `PORT`                 | 배포 시 권장 | 서버 런타임 | `3000`                                                                                            | Node adapter 서버 포트입니다.                                                                                              |
 | `NODE_ENV`             | 배포 시 권장 | 서버 런타임 | `production`                                                                                      | 프로덕션 런타임 여부를 나타냅니다.                                                                                         |
@@ -158,7 +158,7 @@ npm run db:push           # 스키마를 DB에 직접 반영
 npm run db:studio         # Prisma Studio 실행
 ```
 
-이 프로젝트는 자체 DB 컨테이너를 제공하지 않으므로, 로컬/배포 모두 외부 MariaDB/MySQL 접속 정보를 `DATABASE_URL`로 직접 주입해야 합니다.
+일반 로컬 개발은 외부 MariaDB/MySQL에 연결할 수 있고, `docker-compose.yml`과 `compose.production.yml`은 전용 MariaDB 컨테이너를 함께 실행합니다.
 
 ## Google OAuth 설정
 
@@ -189,8 +189,8 @@ npm run db:studio         # Prisma Studio 실행
 6. 프로덕션에서는 실제 도메인 기준으로 원본과 리디렉션 URI를 추가합니다.
 
    ```text
-   https://ppong-nya.com
-   https://ppong-nya.com/auth/callback/google
+   https://ppong-nya.mydepot.kr
+   https://ppong-nya.mydepot.kr/auth/callback/google
    ```
 
 ### Google 로그인 검증 체크리스트
@@ -205,44 +205,30 @@ npm run db:studio         # Prisma Studio 실행
 
 ## Docker 실행
 
-애플리케이션을 Docker Compose로 실행할 수 있습니다. (DB는 외부 서비스 사용)
+로컬 검증용 Compose는 애플리케이션, 일회성 Prisma 마이그레이션, MariaDB를 함께 실행합니다.
 
 ```bash
-AUTH_SECRET="$(openssl rand -base64 32)" \
-GOOGLE_CLIENT_ID="replace-with-google-client-id.apps.googleusercontent.com" \
-GOOGLE_CLIENT_SECRET="replace-with-google-client-secret" \
 docker compose up --build
 ```
 
-Docker Compose의 기본 앱 URL은 `http://localhost:3000`입니다. 프로덕션 또는 실제 OAuth 테스트에서는 앱 서비스 환경 변수에 다음 값도 함께 맞추는 것을 권장합니다.
+기본 앱 URL은 `http://localhost:3000`입니다. 로컬 데이터는 `mariadb-data` 볼륨에 유지됩니다.
 
-```yaml
-environment:
-  PUBLIC_SITE_URL: http://localhost:3000
-  ORIGIN: http://localhost:3000
+`master` 브랜치가 갱신되면 GitHub Actions가 다음 공개 GHCR 이미지를 빌드합니다.
+
+```text
+ghcr.io/danhk0612/ppong-nya:latest
 ```
 
-이미지를 직접 빌드하고 실행할 수도 있습니다.
+NAS에서는 실제 비밀값을 저장소 밖의 `.env`에 넣고 운영 Compose를 실행합니다. `migrate` 서비스가 앱 시작 전에 Prisma 마이그레이션을 한 번 적용합니다.
 
 ```bash
-docker build --target runtime -t ppong-nya .
-docker run --rm -p 3000:3000 \
-  -e HOST=0.0.0.0 \
-  -e PORT=3000 \
-  -e ORIGIN=http://localhost:3000 \
-  -e PUBLIC_SITE_URL=http://localhost:3000 \
-  -e DATABASE_URL="mysql://USER:PASSWORD@EXTERNAL_DB_HOST:3306/ppong_nya" \
-  -e AUTH_SECRET="replace-with-a-long-random-secret" \
-  -e GOOGLE_CLIENT_ID="replace-with-google-client-id.apps.googleusercontent.com" \
-  -e GOOGLE_CLIENT_SECRET="replace-with-google-client-secret" \
-  ppong-nya
+cp .env.nas.example .env
+docker compose --env-file .env -f compose.production.yml config
+docker compose --env-file .env -f compose.production.yml pull
+docker compose --env-file .env -f compose.production.yml up -d
 ```
 
-컨테이너 환경에서 데이터베이스 스키마를 반영하려면 배포 과정에서 다음 명령을 별도로 실행합니다.
-
-```bash
-npm run db:migrate:deploy
-```
+도메인, 인증서, DSM 역방향 프록시와 최초 관리자 로그인 절차는 NAS 배포 문서에 정리되어 있습니다.
 
 ## 테스트 및 검증 명령
 
@@ -267,10 +253,10 @@ npm run db:migrate:deploy
 ## 배포 참고사항
 
 - 배포 전에 `npm run check`와 `npm run build`를 실행합니다.
-- 프로덕션 데이터베이스에는 `npm run db:migrate:deploy`로 Prisma 마이그레이션을 적용합니다.
+- 운영 Compose의 `migrate` 서비스가 프로덕션 데이터베이스에 `prisma migrate deploy`를 적용합니다.
 - `AUTH_SECRET`은 충분히 긴 랜덤 문자열을 사용하고 비밀 관리자에 저장합니다.
 - `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`은 서버 전용 환경 변수로 관리합니다.
-- `PUBLIC_SITE_URL`과 `ORIGIN`은 실제 HTTPS canonical origin으로 설정합니다.
+- `PUBLIC_SITE_URL`과 `ORIGIN`은 `https://ppong-nya.mydepot.kr`로 설정합니다.
 - Google OAuth 승인된 리디렉션 URI에 `https://your-domain.example/auth/callback/google` 형식을 반드시 등록합니다.
 - Node adapter 런타임은 기본적으로 `node build`로 시작합니다.
 - 여러 앱 인스턴스를 실행할 경우 `DATABASE_URL`의 `connection_limit`을 MariaDB 최대 연결 수와 인스턴스 수에 맞춰 조정합니다.
