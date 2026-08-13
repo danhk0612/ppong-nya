@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 const domain =
   sessionStorage.getItem("overrideDomain") || localStorage.getItem("overrideDomain") || window.location.hostname;
 
-const PPONG_NYA_DOMAIN = "ppong-nya.com";
+const PPONG_NYA_DOMAIN = "ppong-nya.mydepot.kr";
 
 export const CONFIGURATIONS = {
   DEFAULT: {
@@ -34,7 +34,7 @@ export const CONFIGURATIONS = {
     packageName: "ppong-nya",
     canonicalDomain: PPONG_NYA_DOMAIN,
     showTopNotice: true,
-    mirrorUrl: "https://ppong-nya.com/",
+    mirrorUrl: "https://ppong-nya.mydepot.kr/",
     rootClassName: "ppong-nya",
     rankColors: ["#ec4899", "#8b5cf6", "#0ea5e9", "#f97316"],
     maskedGameLink: true,
