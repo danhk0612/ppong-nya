@@ -3,68 +3,24 @@ export const ko = {
     name: "퐁냐",
     title: "퐁냐",
     description:
-      "퐁냐는 작혼 전적, 랭킹, 통계를 한눈에 살펴보는 한국어 서비스입니다.",
+      "작혼 4인전 플레이어를 검색하고 즐겨찾기 전적과 통계를 확인하세요.",
     navigationLabel: "기본 내비게이션",
     logoKana: "にゃ",
   },
   nav: {
     home: "홈",
-    ranking: "랭킹",
-    records: "전적",
-    tools: "도구",
+    favorites: "즐겨찾기",
     account: "계정",
     login: "로그인",
     logout: "로그아웃",
     userImageAlt: "로그인 사용자 프로필 이미지",
   },
   home: {
-    eyebrow: "SvelteKit으로 새롭게 시작하는 퐁냐",
-    title: "마작 기록을 더 가볍고 빠르게 만나는 홈 화면",
+    eyebrow: "작혼 4인전 전적",
+    title: "찾고, 즐겨찾고, 전적을 확인하세요",
     description:
-      "퐁냐는 초기 MVP에서 한국어 단일 UI를 기본으로 제공하고, 향후 다국어 확장을 위해 한국어 리소스 구조를 유지합니다.",
-    loginCta: "로그인하고 시작하기",
-    exploreCta: "기능 둘러보기",
-    dashboardEyebrow: "오늘의 퐁냐",
-    dashboardTitle: "홈 대시보드",
-    betaBadge: "베타",
-    highlights: [
-      {
-        id: "ranking",
-        label: "실시간 랭킹",
-        description:
-          "단위전과 대회 기록을 빠르게 탐색할 수 있도록 준비 중입니다.",
-      },
-      {
-        id: "player-search",
-        label: "플레이어 검색",
-        description:
-          "닉네임과 플레이어 ID로 작혼 플레이어를 찾는 검색 화면을 한국어로 제공합니다.",
-      },
-      {
-        id: "records",
-        label: "대국 기록",
-        description:
-          "플레이어별 경기 흐름과 최근 대국 기록을 퐁냐에서 이어갑니다.",
-      },
-      {
-        id: "statistics",
-        label: "통계",
-        description:
-          "순위, 화료율, 방총률 등 주요 지표를 ko-KR 숫자 포맷으로 보여줄 예정입니다.",
-      },
-      {
-        id: "settings",
-        label: "설정",
-        description:
-          "계정별 표시 방식과 기본 언어를 한국어 중심으로 관리합니다.",
-      },
-      {
-        id: "tools",
-        label: "분석 도구",
-        description:
-          "필터, 통계, 하이라이트 기능을 SvelteKit 기반으로 새롭게 구성합니다.",
-      },
-    ],
+      "닉네임으로 플레이어를 검색하고 자주 보는 플레이어의 통계와 최근 전적을 한곳에서 확인할 수 있습니다.",
+    loginCta: "로그인",
   },
   login: {
     title: "로그인 | 퐁냐",
