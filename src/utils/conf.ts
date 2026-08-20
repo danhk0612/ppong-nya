@@ -1,10 +1,13 @@
 import { GameMode } from "../data/types";
 import dayjs from "dayjs";
 
-const domain =
-  sessionStorage.getItem("overrideDomain") || localStorage.getItem("overrideDomain") || window.location.hostname;
-
 const PPONG_NYA_DOMAIN = "ppong-nya.mydepot.kr";
+const isBrowser = typeof window !== "undefined";
+const domain = isBrowser
+  ? window.sessionStorage.getItem("overrideDomain") ||
+    window.localStorage.getItem("overrideDomain") ||
+    window.location.hostname
+  : PPONG_NYA_DOMAIN;
 
 export const CONFIGURATIONS = {
   DEFAULT: {
@@ -103,10 +106,12 @@ const ConfBase: Partial<Configuration> = (() => {
 
 const Conf = mergeDeep<Configuration>(CONFIGURATIONS.DEFAULT, ConfBase);
 
-document.documentElement.className += " " + Conf.rootClassName;
+if (typeof document !== "undefined") {
+  document.documentElement.className += " " + Conf.rootClassName;
+}
 
 export function canTrackUser() {
-  return window.location.host === Conf.canonicalDomain;
+  return isBrowser && window.location.host === Conf.canonicalDomain;
 }
 
 export default Conf;

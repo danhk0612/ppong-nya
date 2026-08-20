@@ -278,6 +278,8 @@ function responseFromCache(
     (cached.responseHeaders as Record<string, string> | null) ?? {},
   );
   headers.delete("content-length");
+  headers.delete("content-encoding");
+  headers.delete("transfer-encoding");
   headers.set("content-type", "application/json");
   headers.set("x-ppong-nya-cache", "hit");
 
@@ -363,6 +365,8 @@ async function finalizeJsonResponse(params: {
 
   const headers = new Headers(params.response.headers);
   headers.delete("content-length");
+  headers.delete("content-encoding");
+  headers.delete("transfer-encoding");
   headers.set("content-type", "application/json");
   headers.set("x-ppong-nya-cache", "miss");
 
@@ -430,5 +434,14 @@ export async function fetchExternalApi(input: {
     });
   }
 
-  return response;
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  headers.delete("content-encoding");
+  headers.delete("transfer-encoding");
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
