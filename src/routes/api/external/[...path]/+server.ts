@@ -9,6 +9,7 @@ async function proxyExternalApi(event: Parameters<RequestHandler>[0]) {
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
+  headers.delete("accept-encoding");
 
   return fetchExternalApi({
     host: event.url.host,
