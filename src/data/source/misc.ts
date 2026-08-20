@@ -7,12 +7,8 @@ import { GameMode } from "../types";
 import type {
   PlayerMetadataLite,
   PlayerExtendedStats,
-  DeltaRankingResponse,
   RankRateBySeat,
 } from "../types";
-import { RankingTimeSpan } from "../types";
-import { CareerRankingType } from "../types/ranking";
-import type { CareerRankingItem } from "../types/ranking";
 import type {
   GlobalStatistics,
   FanStats,
@@ -55,24 +51,6 @@ export async function getExtendedStats(
   }
   return await apiGet<PlayerExtendedStats>(
     `player_extended_stats/${playerId}${datePath}?mode=${mode}`,
-  );
-}
-
-export async function getDeltaRanking(
-  timespan: RankingTimeSpan,
-): Promise<DeltaRankingResponse> {
-  return await apiGet<DeltaRankingResponse>(`player_delta_ranking/${timespan}`);
-}
-
-export async function getCareerRanking(
-  type: CareerRankingType,
-  modeId?: string,
-  minGames?: number,
-): Promise<CareerRankingItem[]> {
-  minGames = minGames || 300;
-  const suffix = minGames === 300 ? "" : `_${minGames}`;
-  return await apiGet<CareerRankingItem[]>(
-    `career_ranking/${type + suffix}?mode=${modeId || ""}`,
   );
 }
 

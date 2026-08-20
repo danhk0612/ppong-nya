@@ -39,20 +39,6 @@ export const EXTERNAL_API_ENDPOINT_POLICIES = [
     note: "Player lookup remains external initially; cache short-lived search JSON by query.",
   },
   {
-    pattern: "player_delta_ranking/:timespan",
-    strategy: "external",
-    cacheTtlSeconds: 30 * 60,
-    cacheTable: "StatisticsSnapshot",
-    note: "Ranking deltas are aggregate external data; cache snapshots by timespan.",
-  },
-  {
-    pattern: "career_ranking/:type",
-    strategy: "external",
-    cacheTtlSeconds: 60 * 60,
-    cacheTable: "StatisticsSnapshot",
-    note: "Career rankings remain external until the new DB has full historical rankings.",
-  },
-  {
     pattern: "global_statistics_2",
     strategy: "external",
     cacheTtlSeconds: 60 * 60,

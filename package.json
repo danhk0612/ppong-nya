@@ -2,11 +2,11 @@
   "name": "ppong-nya",
   "version": "1.0.0",
   "homepage": "https://ppong-nya.mydepot.kr",
-  "description": "퐁냐(ppong-nya): Korean Mahjong Soul records, rankings, and statistics hub built with SvelteKit",
+  "description": "작혼 4인전 플레이어 검색과 즐겨찾기 전적 서비스",
   "keywords": [
     "sveltekit",
     "mahjong",
-    "ranking"
+    "favorites"
   ],
   "type": "module",
   "engines": {
@@ -46,7 +46,6 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio",
-    "verify:user-apis": "node scripts/verify-user-apis.mjs"
+    "db:studio": "prisma studio"
   }
 }
