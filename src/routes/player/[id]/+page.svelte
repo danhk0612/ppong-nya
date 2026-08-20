@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { onMount } from "svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
@@ -15,7 +16,7 @@
   import { LevelWithDelta } from "../../../data/types/level";
   import { GameRecord, type GameRecord as GameRecordType } from "../../../data/types/record";
 
-  let { data }: { data: { playerId: string } } = $props();
+  let { data } = $props();
 
   const ALL_MODES = [GameMode.王座, GameMode.玉, GameMode.金, GameMode.王东, GameMode.玉东, GameMode.金东];
   const allModesValue = ALL_MODES.join(".");
@@ -30,6 +31,10 @@
   let recordsLoading = $state(false);
   let errorMessage = $state("");
   let recordsError = $state("");
+  let favoriteId = $state("");
+  let favoriteLoading = $state(false);
+  let favoriteActionLoading = $state(false);
+  let favoriteMessage = $state("");
   let requestVersion = 0;
 
   const percent = (value: number | null | undefined) =>
@@ -115,7 +120,107 @@
     return record.players.find((player) => String(player.accountId) === data.playerId);
   }
 
-  onMount(loadPlayer);
+  async function loadFavorite() {
+    if (!data.session?.user) return;
+
+    favoriteLoading = true;
+    try {
+      const response = await fetch("/api/favorites");
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      const favorite = payload.favorites.find(
+        (item: { playerId: string }) =>
+          String(item.playerId) === data.playerId,
+      );
+      favoriteId = favorite?.id ?? "";
+    } finally {
+      favoriteLoading = false;
+    }
+  }
+
+  function moveToLogin() {
+    const returnTo = window.location.pathname + window.location.search;
+    goto(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+  }
+
+  async function addFavorite() {
+    if (!data.session?.user) {
+      moveToLogin();
+      return;
+    }
+
+    if (!metadata) return;
+
+    favoriteActionLoading = true;
+    favoriteMessage = "";
+
+    try {
+      const response = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          playerId: data.playerId,
+          nickname: metadata.nickname.trim() || metadata.nickname,
+          metadata: {
+            level: metadata.level,
+            maxLevel: metadata.max_level,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => undefined);
+        throw new Error(payload?.message ?? "즐겨찾기에 추가하지 못했습니다.");
+      }
+
+      const payload = await response.json();
+      favoriteId = payload.favorite.id;
+      favoriteMessage = "즐겨찾기에 추가했습니다.";
+    } catch (error) {
+      favoriteMessage =
+        error instanceof Error
+          ? error.message
+          : "즐겨찾기에 추가하지 못했습니다.";
+    } finally {
+      favoriteActionLoading = false;
+    }
+  }
+
+  async function removeFavorite() {
+    if (!favoriteId) return;
+
+    favoriteActionLoading = true;
+    favoriteMessage = "";
+
+    try {
+      const response = await fetch("/api/favorites", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: favoriteId }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => undefined);
+        throw new Error(payload?.message ?? "즐겨찾기를 삭제하지 못했습니다.");
+      }
+
+      favoriteId = "";
+      favoriteMessage = "즐겨찾기에서 삭제했습니다.";
+    } catch (error) {
+      favoriteMessage =
+        error instanceof Error
+          ? error.message
+          : "즐겨찾기를 삭제하지 못했습니다.";
+    } finally {
+      favoriteActionLoading = false;
+    }
+  }
+
+  onMount(() => {
+    void loadFavorite();
+    void loadPlayer();
+  });
 </script>
 
 <svelte:head>
@@ -127,8 +232,30 @@
   <PageHeader eyebrow="4인전 플레이어" title={metadata?.nickname?.trim() || `플레이어 ${data.playerId}`} description={`플레이어 ID ${data.playerId}`}>
     {#snippet actions()}
       <Button href="/players" variant="secondary">다른 플레이어 검색</Button>
+      {#if favoriteLoading}
+        <Button disabled>즐겨찾기 확인 중...</Button>
+      {:else if favoriteId}
+        <Button
+          variant="danger"
+          disabled={favoriteActionLoading}
+          onclick={() => void removeFavorite()}
+        >
+          {favoriteActionLoading ? "처리 중..." : "즐겨찾기 삭제"}
+        </Button>
+      {:else}
+        <Button
+          disabled={favoriteActionLoading || Boolean(data.session?.user && !metadata)}
+          onclick={() => void addFavorite()}
+        >
+          {favoriteActionLoading ? "추가 중..." : "즐겨찾기 추가"}
+        </Button>
+      {/if}
     {/snippet}
   </PageHeader>
+
+  {#if favoriteMessage}
+    <p class="mt-4 text-sm font-bold text-brand-700">{favoriteMessage}</p>
+  {/if}
 
   <Card class="mt-8" title="조회 조건">
     <form class="grid gap-4 md:grid-cols-[1fr_1fr_1.3fr_auto] md:items-end" onsubmit={(event) => { event.preventDefault(); loadPlayer(); }}>

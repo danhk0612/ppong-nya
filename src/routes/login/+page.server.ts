@@ -8,5 +8,11 @@ export const load: PageServerLoad = async (event) => {
     redirect(303, "/account");
   }
 
-  return {};
+  const requestedReturnTo = event.url.searchParams.get("returnTo");
+  const returnTo =
+    requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
+      ? requestedReturnTo
+      : "/account";
+
+  return { returnTo };
 };
