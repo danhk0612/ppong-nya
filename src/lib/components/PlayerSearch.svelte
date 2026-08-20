@@ -223,7 +223,7 @@
         {#each results as player (player.id)}
           {@const registered = favoritePlayerIds.has(String(player.id))}
           <article
-            class="flex items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-brand-50"
+            class="flex flex-col gap-2 rounded-2xl px-2 py-2 transition hover:bg-brand-50 sm:flex-row sm:items-center"
             class:opacity-50={isOlderDuplicate(player)}
           >
             <button
@@ -244,7 +244,7 @@
               </span>
             </button>
             <button
-              class="min-h-9 shrink-0 rounded-2xl px-3 text-xs font-black transition"
+              class="min-h-9 w-full shrink-0 rounded-2xl px-3 text-xs font-black transition sm:w-auto"
               class:bg-brand-50={registered}
               class:text-brand-700={registered}
               class:bg-brand-500={!registered}

@@ -1,7 +1,3 @@
-import i18n from "../../i18n";
-
-const t = i18n.getFixedT(null, "gameModeShort");
-
 export enum GameMode {
   王座 = 16,
   玉 = 12,
@@ -16,14 +12,18 @@ export enum GameMode {
   三玉东 = 23,
   三王东 = 25,
 }
-export function modeLabelNonTranslated(mode: GameMode) {
-  if (!mode) {
-    return "全部";
-  }
-  return GameMode[mode].replace(/^三/, "");
-}
+
+const KOREAN_YONMA_MODE_LABELS: Partial<Record<GameMode, string>> = {
+  [GameMode.王座]: "왕좌탁",
+  [GameMode.玉]: "옥탁",
+  [GameMode.金]: "금탁",
+  [GameMode.王东]: "왕좌탁 동풍전",
+  [GameMode.玉东]: "옥탁 동풍전",
+  [GameMode.金东]: "금탁 동풍전",
+};
+
 export function modeLabel(mode: GameMode) {
-  return t(modeLabelNonTranslated(mode));
+  return KOREAN_YONMA_MODE_LABELS[mode] ?? "지원하지 않는 대국";
 }
 export function parseCombinedMode(modeString?: string): GameMode[] {
   return (modeString || "")
