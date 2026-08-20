@@ -7,6 +7,8 @@
 
   type AuthMode = "login" | "signup";
 
+  let { data } = $props();
+
   let mode = $state<AuthMode>("login");
   let email = $state("");
   let name = $state("");
@@ -30,7 +32,7 @@
         throw new Error(payload?.message ?? "이메일 인증을 처리하지 못했습니다.");
       }
 
-      window.location.href = "/account";
+      window.location.href = data.returnTo;
     } catch (error) {
       errorMessage =
         error instanceof Error

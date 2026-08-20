@@ -1,6 +1,8 @@
 <script lang="ts">
   import Card from "$lib/components/Card.svelte";
   import PlayerSearch from "$lib/components/PlayerSearch.svelte";
+
+  let { data } = $props();
 </script>
 
 <svelte:head>
@@ -14,6 +16,6 @@
   <p class="mt-5 max-w-2xl text-base leading-8 text-ink-600">작혼 닉네임을 입력하고 검색 결과에서 플레이어를 선택하면 단위, 순위 분포, 화료·방총 통계와 최근 대국을 확인할 수 있습니다.</p>
 
   <Card class="mt-8 overflow-visible" title="닉네임 검색">
-    <PlayerSearch />
+    <PlayerSearch session={data.session} />
   </Card>
 </section>
