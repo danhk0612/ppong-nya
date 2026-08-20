@@ -6,11 +6,13 @@
   import PageSection from "$lib/components/PageSection.svelte";
   import StatusBlock from "$lib/components/StatusBlock.svelte";
   import Toast from "$lib/components/Toast.svelte";
+  import { syncFavoritePlayer } from "$lib/favoriteSync";
   import {
     createUserDataApi,
     type FavoritePlayerItem,
   } from "$lib/stores/userData";
-  import { ko } from "$lib/i18n";
+  import { formatDateTime, ko } from "$lib/i18n";
+  import { LevelWithDelta } from "../../data/types/level";
 
   let { data } = $props();
 
@@ -41,12 +43,31 @@
 
     try {
       favorites = await api.listFavorites();
+      void refreshFavoriteData(favorites);
     } catch (error) {
       errorMessage =
         error instanceof Error ? error.message : ko.account.unknownDataError;
     } finally {
       favoritesLoading = false;
     }
+  }
+
+  async function refreshFavoriteData(items: FavoritePlayerItem[]) {
+    for (const favorite of items) {
+      try {
+        await syncFavoritePlayer(favorite.playerId);
+      } catch {
+        // A later favorite-list or player-page visit retries stale data.
+      }
+    }
+
+    favorites = await api.listFavorites().catch(() => favorites);
+  }
+
+  function currentLevelLabel(favorite: FavoritePlayerItem) {
+    return favorite.currentLevel
+      ? LevelWithDelta.getTag(favorite.currentLevel)
+      : "등급 정보 없음";
   }
 
   async function submitCredentialChange() {
@@ -216,6 +237,15 @@
               </h3>
               <p class="mt-1 text-sm text-ink-500">
                 플레이어 ID {favorite.playerId}
+              </p>
+              <p class="mt-2 text-sm font-bold text-ink-700">
+                현재 등급 {currentLevelLabel(favorite)}
+              </p>
+              <p class="mt-1 text-xs text-ink-500">
+                전적 최종 갱신
+                {favorite.lastRefreshedAt
+                  ? formatDateTime(favorite.lastRefreshedAt)
+                  : "기록 없음"}
               </p>
             </div>
             <div class="flex shrink-0 gap-2">

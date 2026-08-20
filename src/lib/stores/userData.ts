@@ -9,9 +9,12 @@ export type FavoritePlayerItem = {
   id: string;
   playerId: string;
   nickname: string;
-  displayName?: string | null;
-  server?: string | null;
-  memo?: string | null;
+  currentLevel?: {
+    id: number;
+    score: number;
+    delta: number;
+  } | null;
+  lastRefreshedAt?: string | null;
   updatedAt: string;
 };
 

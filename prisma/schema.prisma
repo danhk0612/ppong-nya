@@ -8,16 +8,16 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?   @db.VarChar(120)
-  email         String    @unique @db.VarChar(255)
-  emailVerified DateTime? @db.DateTime(3)
-  image         String?   @db.VarChar(2048)
+  id                     String    @id @default(cuid())
+  name                   String?   @db.VarChar(120)
+  email                  String    @unique @db.VarChar(255)
+  emailVerified          DateTime? @db.DateTime(3)
+  image                  String?   @db.VarChar(2048)
   role                   UserRole  @default(USER)
   passwordHash           String?   @db.VarChar(255)
   passwordChangeRequired Boolean   @default(false)
   createdAt              DateTime  @default(now()) @db.DateTime(3)
-  updatedAt     DateTime  @updatedAt @db.DateTime(3)
+  updatedAt              DateTime  @updatedAt @db.DateTime(3)
 
   accounts         Account[]
   sessions         Session[]
@@ -102,9 +102,10 @@ model GameRecord {
   createdAt      DateTime  @default(now()) @db.DateTime(3)
   updatedAt      DateTime  @updatedAt @db.DateTime(3)
 
-  user    User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  players Player[]
-  notes   GameNote[]
+  user          User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  players       Player[]
+  notes         GameNote[]
+  favoriteLinks FavoriteGameRecord[]
 
   @@unique([userId, externalId])
   @@unique([source, sourceRecordId])
@@ -165,11 +166,26 @@ model FavoritePlayer {
   createdAt   DateTime @default(now()) @db.DateTime(3)
   updatedAt   DateTime @updatedAt @db.DateTime(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameRecords FavoriteGameRecord[]
 
   @@unique([userId, playerId])
   @@index([userId, nickname])
   @@map("favorite_players")
+}
+
+/// Links shared external game records to the favorite players that make them visible.
+model FavoriteGameRecord {
+  favoritePlayerId String
+  gameRecordId     String
+  createdAt        DateTime @default(now()) @db.DateTime(3)
+
+  favoritePlayer FavoritePlayer @relation(fields: [favoritePlayerId], references: [id], onDelete: Cascade)
+  gameRecord     GameRecord     @relation(fields: [gameRecordId], references: [id], onDelete: Cascade)
+
+  @@id([favoritePlayerId, gameRecordId])
+  @@index([gameRecordId])
+  @@map("favorite_game_records")
 }
 
 /// User-owned notes attached to a game record or kept as standalone study notes.

@@ -155,6 +155,15 @@ export const EXTERNAL_API_ENDPOINT_POLICIES = [
 export type ExternalApiEndpointPolicy =
   (typeof EXTERNAL_API_ENDPOINT_POLICIES)[number];
 
+export function getExternalApiCacheTtl(
+  pattern: ExternalApiEndpointPolicy["pattern"],
+) {
+  return (
+    EXTERNAL_API_ENDPOINT_POLICIES.find((policy) => policy.pattern === pattern)
+      ?.cacheTtlSeconds ?? null
+  );
+}
+
 function normalizePath(path: string) {
   return path.replace(/^\/+/, "");
 }
