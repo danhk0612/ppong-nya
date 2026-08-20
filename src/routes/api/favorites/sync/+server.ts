@@ -10,6 +10,7 @@ const STATS_TTL_SECONDS =
   getExternalApiCacheTtl("player_stats/:playerId") ?? 60 * 60;
 const RECORDS_TTL_SECONDS =
   getExternalApiCacheTtl("player_records/:playerId/:cursor/:start") ?? 10 * 60;
+const YONMA_MODE_IDS = new Set([8, 9, 11, 12, 15, 16]);
 
 type ExternalPlayer = {
   accountId: number;
@@ -167,8 +168,10 @@ export const POST: RequestHandler = async (event) => {
             objectValue(record) &&
             typeof record.uuid === "string" &&
             typeof record.modeId === "number" &&
+            YONMA_MODE_IDS.has(record.modeId) &&
             typeof record.startTime === "number" &&
             Array.isArray(record.players) &&
+            record.players.length === 4 &&
             record.players.some((player: unknown) => {
               const playerObject = objectValue(player);
               return (

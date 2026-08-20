@@ -248,7 +248,7 @@
                   : "기록 없음"}
               </p>
             </div>
-            <div class="flex shrink-0 gap-2">
+            <div class="flex shrink-0 flex-wrap gap-2">
               <Button href={`/player/${favorite.playerId}`} size="sm">
                 전적 보기
               </Button>

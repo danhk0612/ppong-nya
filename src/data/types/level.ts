@@ -1,14 +1,23 @@
 import { GameMode } from "./gameMode";
-import { PLAYER_RANKS } from "./constants";
-import i18n from "../../i18n";
 
-const t = i18n.t.bind(i18n);
+const KOREAN_LEVEL_NAMES = ["초심", "작사", "작걸", "작호", "작성", "혼천"];
 
-const LEVEL_MAX_POINTS = [20, 80, 200, 600, 800, 1000, 1200, 1400, 2000, 2800, 3200, 3600, 4000, 6000, 9000];
-const LEVEL_PENALTY = [0, 0, 0, 20, 40, 60, 80, 100, 120, 165, 180, 195, 210, 225, 240, 255];
-const LEVEL_PENALTY_3 = [0, 0, 0, 20, 40, 60, 80, 100, 120, 165, 190, 215, 240, 265, 290, 320];
-const LEVEL_PENALTY_E = [0, 0, 0, 10, 20, 30, 40, 50, 60, 80, 90, 100, 110, 120, 130, 140];
-const LEVEL_PENALTY_E_3 = [0, 0, 0, 10, 20, 30, 40, 50, 60, 80, 95, 110, 125, 140, 160, 175];
+const LEVEL_MAX_POINTS = [
+  20, 80, 200, 600, 800, 1000, 1200, 1400, 2000, 2800, 3200, 3600, 4000, 6000,
+  9000,
+];
+const LEVEL_PENALTY = [
+  0, 0, 0, 20, 40, 60, 80, 100, 120, 165, 180, 195, 210, 225, 240, 255,
+];
+const LEVEL_PENALTY_3 = [
+  0, 0, 0, 20, 40, 60, 80, 100, 120, 165, 190, 215, 240, 265, 290, 320,
+];
+const LEVEL_PENALTY_E = [
+  0, 0, 0, 10, 20, 30, 40, 50, 60, 80, 90, 100, 110, 120, 130, 140,
+];
+const LEVEL_PENALTY_E_3 = [
+  0, 0, 0, 10, 20, 30, 40, 50, 60, 80, 95, 110, 125, 140, 160, 175,
+];
 
 const LEVEL_KONTEN = 7;
 const LEVEL_MAX_POINT_KONTEN = 2000;
@@ -46,13 +55,7 @@ const MODE_PENALTY: { [mode in GameMode]: typeof LEVEL_PENALTY } = {
 };
 
 export function getTranslatedLevelTags(): string[] {
-  const rawTags = t(PLAYER_RANKS) as string;
-  if (rawTags.charCodeAt(0) > 127) {
-    return rawTags.split("");
-  }
-  return Array(rawTags.length / 2)
-    .fill("")
-    .map((_, index) => rawTags.slice(index * 2, index * 2 + 2));
+  return [...KOREAN_LEVEL_NAMES];
 }
 
 export class Level {
@@ -73,14 +76,22 @@ export class Level {
   }
   isSame(other: Level): boolean {
     if (this.isKonten() && other.isKonten()) {
-      if (this._majorRank === LEVEL_KONTEN - 1 || other._majorRank === LEVEL_KONTEN - 1) {
+      if (
+        this._majorRank === LEVEL_KONTEN - 1 ||
+        other._majorRank === LEVEL_KONTEN - 1
+      ) {
         return true;
       }
     }
-    return this._majorRank === other._majorRank && this._minorRank === other._minorRank;
+    return (
+      this._majorRank === other._majorRank &&
+      this._minorRank === other._minorRank
+    );
   }
   isAllowedMode(mode: GameMode): boolean {
-    return LEVEL_ALLOWED_MODES[this._numPlayerId * 100 + this._majorRank].includes(mode);
+    return LEVEL_ALLOWED_MODES[
+      this._numPlayerId * 100 + this._majorRank
+    ].includes(mode);
   }
   isKonten(): boolean {
     return this._majorRank >= LEVEL_KONTEN - 1;
@@ -92,11 +103,10 @@ export class Level {
     return new Level(this._numPlayerId * 10000 + newLevelId);
   }
   getTag(): string {
-    const label = getTranslatedLevelTags()[this.isKonten() ? LEVEL_KONTEN - 2 : this._majorRank - 1];
-    if (this._majorRank === LEVEL_KONTEN - 1) {
-      return label;
-    }
-    return label + this._minorRank;
+    if (this.isKonten()) return KOREAN_LEVEL_NAMES.at(-1) ?? "혼천";
+
+    const label = KOREAN_LEVEL_NAMES[this._majorRank - 1] ?? "등급";
+    return `${label} ${this._minorRank}`;
   }
   getMaxPoint(): number {
     if (this.isKonten()) {
@@ -158,7 +168,11 @@ export class Level {
       maxPoints = level.getMaxPoint();
       score = level.getStartingPoint();
     } else if (score < 0) {
-      if (!maxPoints || level._majorRank === 1 || (level._majorRank === 2 && level._minorRank === 1)) {
+      if (
+        !maxPoints ||
+        level._majorRank === 1 ||
+        (level._majorRank === 2 && level._minorRank === 1)
+      ) {
         score = 0;
       } else {
         level = level.getPreviousLevel();
@@ -195,7 +209,9 @@ export class Level {
     const level = this.getAdjustedLevel(score);
     score = this.getVersionAdjustedScore(score);
     return `${level.getScoreDisplay(level.isSame(this) ? Math.max(score, 0) : level.getStartingPoint())}${
-      level.getMaxPoint() ? "/" + level.getScoreDisplay(level.getMaxPoint()) : ""
+      level.getMaxPoint()
+        ? "/" + level.getScoreDisplay(level.getMaxPoint())
+        : ""
     }`;
   }
 }
