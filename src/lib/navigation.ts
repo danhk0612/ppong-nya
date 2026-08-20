@@ -7,8 +7,5 @@ export type NavItem = {
 
 export const primaryNavigation: NavItem[] = [
   { label: ko.nav.home, href: "/" },
-  { label: "플레이어", href: "/players" },
-  { label: ko.nav.ranking, href: "#ranking" },
-  { label: ko.nav.records, href: "/records" },
-  { label: ko.nav.tools, href: "#tools" },
+  { label: ko.nav.favorites, href: "/account" },
 ];
