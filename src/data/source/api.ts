@@ -12,7 +12,7 @@ export function setMaintenanceHandler(handler: (msg: string) => void) {
 
 export const getApiPrefix = () => "/api/external/";
 
-const CAP_API_ENDPOINT = "https://akcap.pikapika.me/14f343ec68/";
+const CAP_API_ENDPOINT = "/api/cap/";
 
 type CapSolver = {
   solve(): Promise<{ token: string }>;
@@ -31,12 +31,10 @@ async function refreshCapToken() {
     capToken = "";
 
     if (!capSolver) {
-      const [{ default: Cap }, { default: capWasmUrl }] = await Promise.all([
-        import("cap-widget"),
-        import("@cap.js/wasm/browser/cap_wasm_bg.wasm?url"),
-      ]);
-
+      const { default: capWasmUrl } =
+        await import("@cap.js/wasm/browser/cap_wasm_bg.wasm?url");
       Object.assign(globalThis, { CAP_CUSTOM_WASM_URL: capWasmUrl });
+      const { default: Cap } = await import("cap-widget");
       capSolver = new Cap({ apiEndpoint: CAP_API_ENDPOINT }) as CapSolver;
     }
 
