@@ -147,6 +147,14 @@ export async function apiGet<T>(
   return await handleResponse(path, resp);
 }
 
+export async function apiGetFresh<T>(
+  path: string,
+): Promise<T & { _lastModified?: dayjs.ConfigType }> {
+  delete apiCache[path];
+  const resp = await fetchData(path);
+  return await handleResponse(path, resp);
+}
+
 export async function apiCacheablePost<T>(
   path: string,
   body: unknown,

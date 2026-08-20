@@ -2,6 +2,7 @@
   import type { Session } from "@auth/sveltekit";
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
+  import { syncFavoritePlayer } from "$lib/favoriteSync";
   import { searchPlayer, type PlayerSearchResult } from "../../data/source/misc";
   import { Level, LevelWithDelta } from "../../data/types/level";
   import { getAccountZone, getAccountZoneTag } from "../../data/types/zone";
@@ -141,7 +142,15 @@
         ...favoritePlayerIds,
         String(player.id),
       ]);
-      actionMessage = `${player.nickname.trim() || player.nickname} 플레이어를 즐겨찾기에 추가했습니다.`;
+      actionMessage = `${player.nickname.trim() || player.nickname} 플레이어의 전적을 가져오는 중입니다.`;
+
+      try {
+        await syncFavoritePlayer(String(player.id));
+        actionMessage = `${player.nickname.trim() || player.nickname} 플레이어의 전적을 저장했습니다.`;
+      } catch {
+        actionMessage =
+          "즐겨찾기에 추가했습니다. 전적은 플레이어 화면을 열 때 다시 가져옵니다.";
+      }
     } catch (error) {
       errorMessage =
         error instanceof Error

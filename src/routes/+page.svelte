@@ -1,10 +1,20 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
+  import { syncFavoritePlayer } from "$lib/favoriteSync";
   import PlayerSearch from "$lib/components/PlayerSearch.svelte";
   import { ko } from "$lib/i18n";
 
   let { data } = $props();
+
+  onMount(async () => {
+    if (!data.session?.user) return;
+
+    for (const favorite of data.favorites) {
+      await syncFavoritePlayer(favorite.playerId).catch(() => undefined);
+    }
+  });
 </script>
 
 <section class="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
