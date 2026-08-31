@@ -4,9 +4,9 @@ import WebSocket from "ws";
 
 const DEFAULT_BASE = "https://mahjongsoul.game.yo-star.com/";
 const UNITY_LOBBY_ENDPOINTS = {
-  en: "wss://engs.mahjongsoul.com",
-  kr: "wss://engs.mahjongsoul.com",
-  jp: "wss://jpgs.mahjongsoul.com",
+  en: "wss://engs.mahjongsoul.com/gateway",
+  kr: "wss://engsbk.mahjongsoul.com/gateway",
+  jp: "wss://jpgs.mahjongsoul.com/gateway",
 };
 
 async function fetchJson(url) {
@@ -115,7 +115,7 @@ export class MajsoulClient {
         client_version_string: this.clientVersionString,
       });
       if (!auth.access_token) {
-        throw new Error(`Mahjong Soul oauth2Auth(type=22) failed version=${this.clientVersionString}: ${JSON.stringify(auth)}`);
+        throw new Error(`Mahjong Soul oauth2Auth(type=22) failed version=${this.clientVersionString} gateway=${this.gateway}: ${JSON.stringify(auth)}`);
       }
       return auth.access_token;
     }
@@ -147,6 +147,8 @@ export class MajsoulClient {
     this.clientVersion = this.productVersion ? { package: this.productVersion, resource: runtimeVersion } : { resource: runtimeVersion };
     const legacyGateway = runtime.gateway.replace(/^http/, "ws").replace(/\/$/, "") + "/gateway";
     const gateway = this.lobbyEndpoint || UNITY_LOBBY_ENDPOINTS[this.loginRegion] || legacyGateway;
+    this.gateway = gateway;
+    console.log(`[collector] connecting gateway=${gateway} region=${this.loginRegion} route=${this.routeId}`);
     this.ws = new WebSocket(gateway, { headers: { Origin: this.baseUrl.replace(/\/$/, ""), "User-Agent": "Mozilla/5.0 ppong-nya-collector" } });
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("WebSocket connect timeout")), 15000);
@@ -174,7 +176,7 @@ export class MajsoulClient {
       platform: "Web",
     });
     if (connection?.error?.code) {
-      throw new Error(`Mahjong Soul requestConnection failed: ${JSON.stringify(connection.error)}`);
+      throw new Error(`Mahjong Soul requestConnection failed gateway=${this.gateway}: ${JSON.stringify(connection.error)}`);
     }
 
     const accessToken = await this.resolveLoginAccessToken();
