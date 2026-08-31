@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
   }
 
   if (/^\d+$/.test(key)) {
-    return { playerId: key, playerMatches: [] };
+    return { playerId: key };
   }
 
   const matches = await resolvePublicPlayerName({
@@ -22,15 +22,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
   }
 
   if (matches.length === 1) {
-    redirect(
-      307,
-      `/player/${matches[0].playerId}${url.search}`,
-    );
+    redirect(307, `/player/${matches[0].playerId}${url.search}`);
   }
 
-  return {
-    playerId: null,
-    requestedNickname: key,
-    playerMatches: matches,
-  };
+  const searchParams = new URLSearchParams({ q: key });
+  redirect(307, `/players?${searchParams.toString()}`);
 };
