@@ -1,10 +1,6 @@
 <script lang="ts">
-  import type { Session } from "@auth/sveltekit";
   import { ko } from "$lib/i18n";
   import { primaryNavigation } from "$lib/navigation";
-  import AuthNavigation from "./AuthNavigation.svelte";
-
-  let { session }: { session: Session | null } = $props();
 </script>
 
 <header class="sticky top-0 z-40 border-b border-white/70 bg-cream-50/90 backdrop-blur-xl">
@@ -16,18 +12,10 @@
       <span class="truncate text-lg sm:text-xl">{ko.app.name}</span>
     </a>
 
-    <div class="hidden items-center gap-1 rounded-full border border-white bg-white/80 p-1 text-sm font-bold text-ink-600 shadow-soft md:flex">
+    <div class="flex items-center gap-1 rounded-full border border-white bg-white/80 p-1 text-sm font-bold text-ink-600 shadow-soft">
       {#each primaryNavigation as item}
         <a class="rounded-full px-4 py-2 transition hover:bg-brand-50 hover:text-brand-700" href={item.href}>{item.label}</a>
       {/each}
     </div>
-
-    <AuthNavigation {session} />
   </nav>
-
-  <div class="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-3 text-sm font-bold text-ink-600 md:hidden">
-    {#each primaryNavigation as item}
-      <a class="shrink-0 rounded-full border border-white bg-white/80 px-4 py-2 shadow-soft" href={item.href}>{item.label}</a>
-    {/each}
-  </div>
 </header>
