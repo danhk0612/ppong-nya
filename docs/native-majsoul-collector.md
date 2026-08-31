@@ -38,6 +38,28 @@
 
 `collector/modes.mjs`를 단일 정의 지점으로 사용한다.
 
+## Authentication
+
+현재 Yostar 글로벌 클라이언트(한국어 UI 포함)는 중앙 로그인 세션의 `UID`와 `Token`을 사용한다.
+
+collector는 기본적으로 다음 흐름을 사용한다.
+
+1. 사용자가 자신의 브라우저 `quick-login` 요청에서 `Head.UID`, `Head.Token`을 확인한다.
+2. collector가 `.lq.Lobby.oauth2Auth`를 `type=22`, `code=Token`, `uid=UID`로 호출한다.
+3. 반환된 access token으로 `oauth2Check`와 `oauth2Login`을 진행한다.
+
+자격증명은 실제 서버 `.env`에만 저장하고 저장소에는 커밋하지 않는다.
+
+```env
+MAJSOUL_UID=...
+MAJSOUL_TOKEN=...
+MAJSOUL_OAUTH_TYPE=22
+MAJSOUL_URL_BASE=https://mahjongsoul.game.yo-star.com/
+MAJSOUL_LOGIN_REGION=en
+```
+
+`MAJSOUL_ACCESS_TOKEN`은 이전 type 7 방식 호환용으로만 남겨두며 현재 Yostar 로그인에서는 비워 둔다.
+
 ## Storage
 
 `collector_games`는 수집기의 영속 큐다.
@@ -56,11 +78,12 @@
 
 초기 단계에서는 production Compose의 `collector` profile로 비활성 상태를 유지한다.
 
-수집 계정 토큰은 실제 서버의 `.env`에만 둔다.
+수집 계정 자격증명은 실제 서버의 `.env`에만 둔다.
 
 ```env
-MAJSOUL_ACCESS_TOKEN=...
-MAJSOUL_OAUTH_TYPE=7
+MAJSOUL_UID=...
+MAJSOUL_TOKEN=...
+MAJSOUL_OAUTH_TYPE=22
 MAJSOUL_URL_BASE=https://mahjongsoul.game.yo-star.com/
 MAJSOUL_LOGIN_REGION=en
 COLLECTOR_LIST_ONLY=true
@@ -90,6 +113,7 @@ docker compose --profile collector --env-file .env \
 - [x] 4인 랭크전 mode/filter 정의
 - [x] 동적 작혼 protobuf/gateway 로딩
 - [x] WebSocket RPC 클라이언트
+- [x] Yostar UID/Token OAuth type 22 로그인
 - [x] 수집 큐/원문 저장 migration
 - [x] optional Compose collector service
 - [x] collector container build
