@@ -179,7 +179,10 @@ export class MajsoulClient {
       throw new Error(`Mahjong Soul requestConnection failed gateway=${this.gateway}: ${JSON.stringify(connection.error)}`);
     }
 
+    await this.rpc(".lq.Lobby.heartbeat", {});
     const accessToken = await this.resolveLoginAccessToken();
+    await this.rpc(".lq.Lobby.heartbeat", {});
+
     let check = await this.rpc(".lq.Lobby.oauth2Check", { type: this.oauthType, access_token: accessToken });
     if (!check.has_account) {
       await new Promise((resolve) => setTimeout(resolve, 1500));
