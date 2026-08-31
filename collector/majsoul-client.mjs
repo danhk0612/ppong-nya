@@ -78,6 +78,7 @@ export class MajsoulClient {
     accessToken,
     oauthType = uid && token ? 22 : 7,
     loginRegion = "en",
+    routeId = process.env.MAJSOUL_ROUTE_ID,
   }) {
     this.baseUrl = baseUrl;
     this.uid = uid;
@@ -85,6 +86,7 @@ export class MajsoulClient {
     this.accessToken = accessToken;
     this.oauthType = Number(oauthType);
     this.loginRegion = loginRegion;
+    this.routeId = routeId || `${loginRegion}-2`;
     this.pending = new Map();
   }
 
@@ -126,7 +128,8 @@ export class MajsoulClient {
   async connect() {
     const runtime = await resolveRuntime(this.baseUrl);
     this.codec = new RpcCodec(runtime.protoJson);
-    this.clientVersionString = `web-${runtime.version.replace(/\.[a-z]+$/i, "")}`;
+    const runtimeVersion = runtime.version.replace(/\.[a-z]+$/i, "");
+    this.clientVersionString = `WebGL_2022-${runtimeVersion}`;
     const gateway = runtime.gateway.replace(/^http/, "ws").replace(/\/$/, "") + "/gateway";
     this.ws = new WebSocket(gateway, { headers: { Origin: this.baseUrl.replace(/\/$/, ""), "User-Agent": "Mozilla/5.0 ppong-nya-collector" } });
     await new Promise((resolve, reject) => {
@@ -144,6 +147,16 @@ export class MajsoulClient {
       for (const waiter of this.pending.values()) waiter.reject(new Error("Mahjong Soul connection closed"));
       this.pending.clear();
     });
+
+    const connection = await this.rpc(".lq.Route.requestConnection", {
+      type: 1,
+      route_id: this.routeId,
+      timestamp: Math.floor(Date.now() / 1000),
+      platform: "Web",
+    });
+    if (connection?.error?.code) {
+      throw new Error(`Mahjong Soul requestConnection failed: ${JSON.stringify(connection.error)}`);
+    }
 
     await this.rpc(".lq.Lobby.heatbeat", { no_operation_counter: 0 });
     const accessToken = await this.resolveLoginAccessToken();
