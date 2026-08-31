@@ -14,7 +14,7 @@ This file tracks implementation against `docs/public-player-cache-plan.md`.
 - [x] Stage 4 player page/UI
 - [x] Stage 5 name routing/search simplification
 - [x] Stage 6 membership/favorites runtime removal and data migration
-- [ ] Stage 7 retention and cleanup
+- [x] Stage 7 retention and cleanup
 - [ ] Stage 8 verification/deployment
 
 ## Stage 1 notes
@@ -91,3 +91,18 @@ The service no longer exposes or executes membership/favorite functionality at r
 The latest Stage 6 head passed GitHub Actions Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation.
 
 Legacy membership/favorite database models and tables are deliberately retained until the Stage 8 production MariaDB migration verifies that the copied public-cache data is complete. Physical table removal can then be done safely without losing the rollback path.
+
+## Stage 7 notes
+
+Shared-cache retention is now enforced by lightweight maintenance triggered by player API access and throttled to at most once per application process per hour.
+
+Default policy:
+
+- players not accessed for 90 days are removed from the shared cache
+- each cached player retains at most 2,000 linked game records
+- expired player-statistics caches are removed
+- expired external API caches are removed
+- stale query-coverage markers older than the retention window are removed
+- external `GameRecord` rows that are no longer referenced by public-cache links, legacy favorite links, or a legacy owner are removed
+
+`PLAYER_CACHE_RETENTION_DAYS` and `PLAYER_CACHE_MAX_RECORDS` can override the defaults in Docker/production configuration. The Stage 7 code passed Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation.
