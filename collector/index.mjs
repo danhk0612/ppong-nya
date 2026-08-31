@@ -3,7 +3,10 @@ import { MajsoulClient } from "./majsoul-client.mjs";
 import { FOUR_PLAYER_RANKED_MODES, MODE_IDS } from "./modes.mjs";
 
 const DATABASE_URL = process.env.DATABASE_URL;
-const ACCESS_TOKEN = process.env.MAJSOUL_ACCESS_TOKEN;
+const MAJSOUL_UID = process.env.MAJSOUL_UID;
+const MAJSOUL_TOKEN = process.env.MAJSOUL_TOKEN;
+const LEGACY_ACCESS_TOKEN = process.env.MAJSOUL_ACCESS_TOKEN;
+const OAUTH_TYPE = Number(process.env.MAJSOUL_OAUTH_TYPE || (MAJSOUL_UID && MAJSOUL_TOKEN ? 22 : 7));
 const POLL_INTERVAL_MS = Math.max(5000, Number(process.env.COLLECTOR_POLL_INTERVAL_MS || 7000));
 const RECORD_DELAY_MS = Math.max(5 * 60_000, Number(process.env.COLLECTOR_RECORD_DELAY_MS || 20 * 60_000));
 const BATCH_SIZE = Math.max(1, Math.min(100, Number(process.env.COLLECTOR_RECORD_BATCH_SIZE || 20)));
@@ -11,7 +14,9 @@ const LIST_ONLY = /^(1|true|yes)$/i.test(process.env.COLLECTOR_LIST_ONLY || "");
 const ONE_SHOT = /^(1|true|yes)$/i.test(process.env.COLLECTOR_ONE_SHOT || "");
 
 if (!DATABASE_URL) throw new Error("DATABASE_URL is required");
-if (!ACCESS_TOKEN) throw new Error("MAJSOUL_ACCESS_TOKEN is required");
+if (!(MAJSOUL_UID && MAJSOUL_TOKEN) && !LEGACY_ACCESS_TOKEN) {
+  throw new Error("MAJSOUL_UID and MAJSOUL_TOKEN are required for Yostar login (or MAJSOUL_ACCESS_TOKEN for legacy login)");
+}
 
 const db = mysql.createPool(DATABASE_URL);
 let stopping = false;
@@ -141,14 +146,16 @@ async function heartbeat(message = null) {
 async function run() {
   await recoverInterruptedWork();
   const client = new MajsoulClient({
-    accessToken: ACCESS_TOKEN,
-    oauthType: process.env.MAJSOUL_OAUTH_TYPE || 7,
+    uid: MAJSOUL_UID,
+    token: MAJSOUL_TOKEN,
+    accessToken: LEGACY_ACCESS_TOKEN,
+    oauthType: OAUTH_TYPE,
     baseUrl: process.env.MAJSOUL_URL_BASE,
     loginRegion: process.env.MAJSOUL_LOGIN_REGION || "en",
   });
   try {
     const login = await client.connect();
-    console.log(`[collector] connected account=${login.account_id}`);
+    console.log(`[collector] connected account=${login.account_id} oauthType=${OAUTH_TYPE}`);
     await heartbeat("connected");
     do {
       const started = Date.now();
