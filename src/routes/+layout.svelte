@@ -3,7 +3,7 @@
   import Navbar from "$lib/components/Navbar.svelte";
   import { ko } from "$lib/i18n";
 
-  let { data, children } = $props();
+  let { children } = $props();
 </script>
 
 <svelte:head>
@@ -12,7 +12,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-brand-radial text-ink-950">
-  <Navbar session={data.session} />
+  <Navbar />
 
   <main>
     {@render children?.()}

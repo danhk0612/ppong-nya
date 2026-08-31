@@ -46,7 +46,7 @@ jobs:
             type=sha,prefix=sha-
           labels: |
             org.opencontainers.image.title=ppong-nya
-            org.opencontainers.image.description=Korean Mahjong Soul records, rankings, and statistics hub
+            org.opencontainers.image.description=Korean Mahjong Soul 4-player records and statistics service
 
       - name: Build and publish image
         uses: docker/build-push-action@v7

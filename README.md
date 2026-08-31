@@ -1,266 +1,127 @@
-# 퐁냐(ppong-nya)
+# 퐁냐 (ppong-nya)
 
-퐁냐는 작혼(雀魂, Mahjong Soul) 전적, 랭킹, 통계를 한국어 중심으로 확인하고 관리하기 위한 SvelteKit 기반 웹 서비스입니다. 현재 MVP는 Google OAuth + 이메일/비밀번호 로그인, 사용자별 대국 기록/설정/즐겨찾기/메모 저장, 모바일 우선 UI를 중심으로 구성되어 있습니다.
+퐁냐는 작혼(Mahjong Soul) 4인전 플레이어의 전적과 통계를 기간·탁 종류별로 조회하는 한국어 웹 서비스입니다.
 
-## 프로젝트 소개
-
-- 서비스명: `퐁냐`
-- 패키지명/이미지명/도메인 표기: `ppong-nya`
-- 목적: 작혼 플레이어가 본인의 대국 기록과 관련 데이터를 한곳에서 조회하고 관리할 수 있는 한국어 허브 제공
-- 기본 UI 언어: 한국어
-- 인증 방식: `@auth/sveltekit` + 자체 이메일/비밀번호 인증(기본) + Google OAuth(선택)
-- 데이터 저장소: MariaDB 호환 MySQL 데이터베이스 + Prisma ORM
+운영 주소: https://ppong-nya.mydepot.kr
 
 ## 주요 기능
 
-- 이메일/비밀번호 기반 로그인 및 세션 관리
-- Google OAuth 로그인(환경 변수 설정 시 활성화)
-- 사용자 계정별 데이터 저장
-  - 사용자 설정
-  - 즐겨찾기 플레이어
-  - 대국 기록
-  - 대국 메모
-  - 검색 기록 및 통계 캐시를 위한 Prisma 모델
-- 저장한 대국 기록 목록 및 상세 화면
-- SvelteKit 서버 라우트 기반 CRUD API
-- 한국어 중심 i18n 리소스 구조
-- 모바일 우선 카드/표 UI 컴포넌트
-- Docker 및 Docker Compose 기반 실행 구성
+- 작혼 닉네임 또는 숫자 플레이어 ID 검색
+- 플레이어 페이지를 닉네임 또는 ID로 직접 접근
+- 검색한 플레이어와 대국 데이터를 서버 공용 캐시에 저장
+- 저장된 데이터 우선 사용 후 부족하거나 오래된 데이터만 추가 수집
+- 최근 7일 / 30일 / 90일 / 6개월 / 1년 / 직접 지정 기간 조회
+- 금·옥·왕좌 및 동풍전/남풍전 탁 종류 필터
+- 선택한 기간과 탁 기준 통계 재계산
+- 플레이어 페이지 접근 시 오래된 데이터 자동 갱신
+- 수동 새로고침 지원
+- 4인전만 지원
 
-## 인증/초기 관리자 계정 동작
+회원가입, 로그인, 사용자별 즐겨찾기 기능은 사용하지 않습니다.
 
-이 프로젝트는 **Google OAuth 없이도 로그인 가능**합니다.
+## 데이터 보관
 
-- `/api/auth/email` 엔드포인트에서 이메일/비밀번호 기반 `signup`/`login`을 처리합니다.
-- 로그인 페이지는 `GOOGLE_CLIENT_ID`와 `GOOGLE_CLIENT_SECRET`이 모두 있을 때만 Google 로그인 버튼을 활성화합니다.
-- 즉, Google OAuth 값을 비워도 이메일/비밀번호 로그인 플로우는 그대로 동작합니다.
+검색한 플레이어 데이터는 모든 방문자가 공유하는 서버 캐시에 저장됩니다.
 
-### 최초 설치 시 기본 관리자 계정
+기본 보관 정책:
 
-앱 시작 시 서버 훅에서 `ensureDefaultAdmin()`을 호출하여, DB에 `ADMIN` 권한 사용자가 하나도 없으면 기본 관리자 계정을 자동으로 생성(또는 지정 이메일 사용자 승격)합니다.
+- 마지막 접근 후 90일이 지난 플레이어 캐시 정리
+- 플레이어당 최대 2,000전 유지
+- 만료된 통계/API 캐시 정리
+- 다른 플레이어에서도 참조하지 않는 외부 대국 데이터 정리
 
-- 기본 관리자 이메일: `DEFAULT_ADMIN_EMAIL` (미설정 시 `admin@ppong-nya.local`)
-- 기본 관리자 비밀번호: `DEFAULT_ADMIN_PASSWORD` (미설정 시 `ChangeMe123!`)
-- 생성된 기본 관리자 계정은 `passwordChangeRequired=true` 상태로 시작합니다.
+다음 환경 변수로 변경할 수 있습니다.
 
-### 최초 관리자 로그인 시 강제 자격 증명 재설정
+```env
+PLAYER_CACHE_RETENTION_DAYS=90
+PLAYER_CACHE_MAX_RECORDS=2000
+```
 
-기본 관리자로 로그인하면 즉시 모든 경로 접근이 허용되지 않고, 아래 정책이 적용됩니다.
+## 기술 구성
 
-- `/account`, `/api/account/credentials`, 일부 세션/로그아웃 경로를 제외한 접근은 차단됩니다.
-- 웹 페이지 접근 시 `/account`로 강제 리다이렉트됩니다.
-- API 접근 시 403 오류를 반환합니다.
-- `/account` 화면에서 이메일 아이디 + 새 비밀번호 변경이 완료되어야 `passwordChangeRequired`가 해제됩니다.
-- 이때 최초 관리자 로그인 상태에서는 **기존 이메일을 그대로 재사용할 수 없고 반드시 이메일 아이디를 변경**해야 합니다.
+- SvelteKit 2 / Svelte 5 / TypeScript
+- MariaDB 11.4
+- Prisma 6
+- Docker / Docker Compose
+- Oracle Cloud ARM64 운영
+- Nginx Proxy Manager
 
-이 정책으로 최초 설치 직후의 알려진 기본 자격 증명 사용 구간을 최소화합니다.
+외부 데이터 요청은 애플리케이션 서버의 프록시를 거치며 기존 CAP 프록시 및 응답 압축 처리를 유지합니다.
 
-## 문서
+## 로컬 실행
 
-- 외부 API endpoint 인벤토리, 마이그레이션 계획, 그리고 클라이언트가 외부 API를 직접 호출하지 않고 내부 `/api/external/*`를 거쳐야 하는 정책은 [`docs/external-api-plan.md`](docs/external-api-plan.md)를 참고하세요.
-- Synology NAS 운영 배포 절차는 [`docs/nas-deployment.md`](docs/nas-deployment.md)를 참고하세요.
+### 환경 변수
 
-## 기술 스택
-
-- 런타임: `Node.js` 20 이상, `npm` 10 이상
-- 프레임워크: `SvelteKit` 2, `Svelte` 5, `Vite` 5
-- 스타일링: `Tailwind CSS`, `PostCSS`, `Autoprefixer`
-- 인증: `@auth/sveltekit`, `@auth/prisma-adapter`, Google OAuth
-- 데이터베이스: `MariaDB` 11.4 또는 MySQL 호환 데이터베이스
-- ORM: `Prisma` 6, `@prisma/client`
-- 기타: `TypeScript`, `dayjs`, `i18next`
-
-## 사전 요구사항
-
-로컬 개발을 시작하기 전에 다음 도구가 필요합니다.
-
-- `Node.js >= 20.0.0`
-- `npm >= 10.0.0`
-- `Docker` 및 `Docker Compose` 플러그인
-- Google OAuth를 사용할 경우 OAuth 클라이언트를 만들 수 있는 Google Cloud 프로젝트
-- 로컬 또는 원격 MariaDB/MySQL 데이터베이스
-
-## 환경 변수
-
-로컬 개발에서는 저장소 루트의 `.env.example`을 복사해 `.env`를 만들고 값을 채웁니다.
+`.env.example`을 복사합니다.
 
 ```bash
 cp .env.example .env
 ```
 
-| 변수명                 | 필수 여부    | 노출 범위   | 예시                                                                                              | 설명                                                                                                                       |
-| ---------------------- | ------------ | ----------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | 필수         | 서버 전용   | `mysql://USER:PASSWORD@HOST:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10` | Prisma가 사용하는 MariaDB/MySQL 연결 문자열입니다.                                                                         |
-| `AUTH_SECRET`          | 필수         | 서버 전용   | `openssl rand -base64 32`로 생성한 긴 문자열                                                      | Auth.js/SvelteKitAuth 쿠키와 토큰 서명/암호화에 사용하는 비밀값입니다.                                                     |
-| `GOOGLE_CLIENT_ID`     | 선택         | 서버 전용   | `replace-with-google-client-id.apps.googleusercontent.com`                                        | Google OAuth를 사용할 때 설정하는 클라이언트 ID입니다.                                                                     |
-| `GOOGLE_CLIENT_SECRET` | 선택         | 서버 전용   | `replace-with-google-client-secret`                                                               | Google OAuth를 사용할 때 설정하는 클라이언트 보안 비밀입니다.                                                              |
-| `PUBLIC_SITE_URL`      | 필수         | 공개        | `http://localhost:5173`                                                                           | 서비스의 기준 URL입니다. OAuth 리다이렉트 검증과 공개 런타임 설정에 사용됩니다.                                            |
-| `PUBLIC_SITE_NAME`     | 선택         | 공개        | `퐁냐`                                                                                            | 공개 사이트명입니다. 값이 없으면 코드에서 `퐁냐`를 기본값으로 사용합니다.                                                  |
-| `ORIGIN`               | 배포 시 권장 | 서버 런타임 | `https://ppong-nya.mydepot.kr`                                                                    | `@sveltejs/adapter-node` 실행 시 요청 origin 검증에 사용하는 값입니다. Docker 예시는 `http://localhost:3000`을 사용합니다. |
-| `HOST`                 | 배포 시 권장 | 서버 런타임 | `0.0.0.0`                                                                                         | Node adapter 서버가 바인딩할 호스트입니다.                                                                                 |
-| `PORT`                 | 배포 시 권장 | 서버 런타임 | `3000`                                                                                            | Node adapter 서버 포트입니다.                                                                                              |
-| `NODE_ENV`             | 배포 시 권장 | 서버 런타임 | `production`                                                                                      | 프로덕션 런타임 여부를 나타냅니다.                                                                                         |
+필수 값은 `DATABASE_URL`, `PUBLIC_SITE_URL`입니다.
 
-주의사항:
+예시:
 
-- `DATABASE_URL`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`은 서버 전용 값이므로 `PUBLIC_` 접두사를 붙이지 않습니다.
-- `PUBLIC_SITE_URL`은 브라우저 번들에서도 접근 가능한 공개 값입니다. 실제 비밀값을 넣지 않습니다.
-- 프로덕션에서는 `PUBLIC_SITE_URL`과 `ORIGIN`을 실제 HTTPS 도메인으로 맞추는 것을 권장합니다.
-- Prisma 연결 문자열에는 커넥션 풀 정책을 명시할 수 있습니다. 코드에서는 누락 시 개발 환경 `connection_limit=5`, 프로덕션 `connection_limit=10`, 공통 `pool_timeout=10`, `connect_timeout=10`을 기본으로 보정합니다.
-
-## 로컬 개발 실행
-
-1. 의존성을 설치합니다.
-
-   ```bash
-   npm install
-   ```
-
-2. 환경 변수 파일을 준비합니다.
-
-   ```bash
-   cp .env.example .env
-   ```
-
-3. `.env`의 `DATABASE_URL`을 외부 DB에 맞춥니다.
-
-   ```env
-   DATABASE_URL="mysql://ppong_nya:ppong_nya_password@localhost:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10"
-   PUBLIC_SITE_URL="http://localhost:5173"
-   ```
-
-4. Prisma Client를 생성하고 개발용 마이그레이션을 적용합니다.
-
-   ```bash
-   npm run db:generate
-   npm run db:migrate:dev
-   ```
-
-5. 개발 서버를 실행합니다.
-
-   ```bash
-   npm run dev
-   ```
-
-6. 브라우저에서 `http://localhost:5173`에 접속합니다.
-
-## MariaDB/Prisma 설정
-
-Prisma 설정은 `prisma/schema.prisma`에 있으며, datasource provider는 `mysql`입니다. MariaDB는 MySQL 호환 프로토콜을 사용하므로 `DATABASE_URL`도 `mysql://` 형식으로 작성합니다.
-
-자주 사용하는 명령은 다음과 같습니다.
-
-```bash
-npm run db:generate       # Prisma Client 생성
-npm run db:migrate:dev    # 개발 환경 마이그레이션 생성/적용
-npm run db:migrate:deploy # 배포 환경 마이그레이션 적용
-npm run db:push           # 스키마를 DB에 직접 반영
-npm run db:studio         # Prisma Studio 실행
+```env
+DATABASE_URL="mysql://ppong_nya:password@127.0.0.1:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10"
+PUBLIC_SITE_URL="http://localhost:5173"
+PUBLIC_SITE_NAME="퐁냐"
+PLAYER_CACHE_RETENTION_DAYS="90"
+PLAYER_CACHE_MAX_RECORDS="2000"
 ```
 
-일반 로컬 개발은 외부 MariaDB/MySQL에 연결할 수 있고, `docker-compose.yml`과 `compose.production.yml`은 전용 MariaDB 컨테이너를 함께 실행합니다.
+### 개발 서버
 
-## Google OAuth 설정
+```bash
+npm ci
+npm run db:generate
+npm run db:migrate:deploy
+npm run dev
+```
 
-1. Google Cloud Console에서 OAuth 동의 화면을 구성합니다.
-2. OAuth 클라이언트 유형은 웹 애플리케이션으로 생성합니다.
-3. 로컬 개발용 승인된 JavaScript 원본을 추가합니다.
-
-   ```text
-   http://localhost:5173
-   ```
-
-4. 로컬 개발용 승인된 리디렉션 URI를 추가합니다.
-
-   ```text
-   http://localhost:5173/auth/callback/google
-   ```
-
-5. 발급받은 값과 데이터베이스 연결 문자열을 `.env`에 입력합니다.
-
-   ```env
-   GOOGLE_CLIENT_ID="replace-with-google-client-id.apps.googleusercontent.com"
-   GOOGLE_CLIENT_SECRET="replace-with-google-client-secret"
-   AUTH_SECRET="replace-with-a-long-random-secret"
-   PUBLIC_SITE_URL="http://localhost:5173"
-   DATABASE_URL="mysql://ppong_nya:ppong_nya_password@localhost:3306/ppong_nya?connection_limit=5&pool_timeout=10&connect_timeout=10"
-   ```
-
-6. 프로덕션에서는 실제 도메인 기준으로 원본과 리디렉션 URI를 추가합니다.
-
-   ```text
-   https://ppong-nya.mydepot.kr
-   https://ppong-nya.mydepot.kr/auth/callback/google
-   ```
-
-### Google 로그인 검증 체크리스트
-
-1. 앱을 로컬에서 실행하기 전에 `npm run db:migrate:dev`로 `users`, `accounts`, `sessions` 테이블이 포함된 Prisma 마이그레이션을 적용합니다.
-2. `npm run dev`로 앱을 실행하고 `http://localhost:5173/login`에 접속합니다.
-3. `Google로 로그인` 버튼을 눌러 인증을 완료한 뒤 `/account`로 이동하는지 확인합니다.
-4. Prisma Studio나 SQL 클라이언트에서 로그인 직후 `users`, `accounts`, `sessions` 테이블에 현재 사용자, Google 계정 연결, 세션 레코드가 생성됐는지 확인합니다.
-5. `/account` 상단의 세션 정보 카드에서 Auth.js 세션 만료 시각, DB 세션 ID/만료 시각, 연결된 OAuth 계정 정보가 표시되는지 확인합니다.
-6. 로그아웃 API는 같은 origin에서 `POST /api/auth/logout`으로 호출합니다. 성공 응답은 `authenticated: false`와 삭제된 DB 세션 수를 반환하며 Auth.js 세션 쿠키를 제거합니다.
-7. 로그아웃 후 `/account`를 다시 열었을 때 보호 페이지 접근이 차단되고 `/login`으로 리디렉션되는지 확인합니다.
-
-## Docker 실행
-
-로컬 검증용 Compose는 애플리케이션, 일회성 Prisma 마이그레이션, MariaDB를 함께 실행합니다.
+### Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-기본 앱 URL은 `http://localhost:3000`입니다. 로컬 데이터는 `mariadb-data` 볼륨에 유지됩니다.
+기본 주소는 `http://localhost:3000`입니다.
 
-`master` 브랜치가 갱신되면 GitHub Actions가 다음 공개 GHCR 이미지를 빌드합니다.
+## 운영 배포
+
+`master` 브랜치가 갱신되면 GitHub Actions가 AMD64/ARM64 이미지를 빌드해 다음 태그로 게시합니다.
 
 ```text
 ghcr.io/danhk0612/ppong-nya:latest
 ```
 
-NAS에서는 실제 비밀값을 저장소 밖의 `.env`에 넣고 운영 Compose를 실행합니다. `migrate` 서비스가 앱 시작 전에 Prisma 마이그레이션을 한 번 적용합니다.
+Oracle Cloud 운영 절차는 [`docs/oracle-cloud-deployment.md`](docs/oracle-cloud-deployment.md)를 참고합니다.
+
+운영 갱신의 기본 순서는 다음과 같습니다.
 
 ```bash
-cp .env.nas.example .env
-docker compose --env-file .env -f compose.production.yml config
-docker compose --env-file .env -f compose.production.yml pull
-docker compose --env-file .env -f compose.production.yml up -d
+git pull --ff-only
+docker compose --env-file .env -f compose.production.yml -f compose.oracle.yml pull
+docker compose --env-file .env -f compose.production.yml -f compose.oracle.yml up -d
+docker compose --env-file .env -f compose.production.yml -f compose.oracle.yml ps
 ```
 
-도메인, 인증서, DSM 역방향 프록시와 최초 관리자 로그인 절차는 [NAS 배포 문서](docs/nas-deployment.md)에 정리되어 있습니다. Oracle Cloud ARM과 Nginx Proxy Manager 구성은 [Oracle Cloud 배포 문서](docs/oracle-cloud-deployment.md)를 사용합니다.
+`migrate` 서비스가 애플리케이션 시작 전에 Prisma 마이그레이션을 적용합니다.
 
-## 테스트 및 검증 명령
+## 검증
 
-변경 사항을 검증할 때 다음 명령을 사용합니다.
+Pull Request CI에서 다음을 확인합니다.
 
-```bash
-npm run check
-npm run build
-npm run db:generate
-npm run db:migrate:deploy
-```
+- MariaDB 11.4에 전체 Prisma 마이그레이션 적용
+- Prisma Client 생성
+- Svelte/TypeScript 검사
+- 애플리케이션 빌드
+- Docker Compose 구성 검증
+- AMD64/ARM64 컨테이너 이미지 빌드
 
-명령별 용도는 다음과 같습니다.
+## 관련 문서
 
-- `npm run check`: SvelteKit 동기화와 `svelte-check` 타입 검사를 실행합니다.
-- `npm run build`: 프로덕션 빌드를 생성합니다.
-- `npm run db:generate`: Prisma Client를 생성합니다.
-- `npm run db:migrate:deploy`: 이미 생성된 Prisma 마이그레이션을 배포 환경 데이터베이스에 적용합니다.
-
-현재 별도의 단위 테스트 스크립트는 정의되어 있지 않습니다. 테스트 스크립트를 추가하면 이 섹션에 함께 기록해 주세요.
-
-## 배포 참고사항
-
-- 배포 전에 `npm run check`와 `npm run build`를 실행합니다.
-- 운영 Compose의 `migrate` 서비스가 프로덕션 데이터베이스에 `prisma migrate deploy`를 적용합니다.
-- `AUTH_SECRET`은 충분히 긴 랜덤 문자열을 사용하고 비밀 관리자에 저장합니다.
-- `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`은 서버 전용 환경 변수로 관리합니다.
-- `PUBLIC_SITE_URL`과 `ORIGIN`은 `https://ppong-nya.mydepot.kr`로 설정합니다.
-- Google OAuth 승인된 리디렉션 URI에 `https://your-domain.example/auth/callback/google` 형식을 반드시 등록합니다.
-- Node adapter 런타임은 기본적으로 `node build`로 시작합니다.
-- 여러 앱 인스턴스를 실행할 경우 `DATABASE_URL`의 `connection_limit`을 MariaDB 최대 연결 수와 인스턴스 수에 맞춰 조정합니다.
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](./LICENSE)를 참고하세요.
+- [`docs/public-player-cache-plan.md`](docs/public-player-cache-plan.md): 공용 플레이어 캐시 개편 계획
+- [`docs/public-player-cache-progress.md`](docs/public-player-cache-progress.md): 단계별 진행 상태
+- [`docs/external-api-plan.md`](docs/external-api-plan.md): 외부 API/프록시 구조
+- [`docs/oracle-cloud-deployment.md`](docs/oracle-cloud-deployment.md): Oracle Cloud 운영 배포

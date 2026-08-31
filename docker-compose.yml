@@ -45,11 +45,8 @@ services:
       PUBLIC_SITE_NAME: 퐁냐
       ORIGIN: http://localhost:3000
       DATABASE_URL: mysql://ppong_nya:${MARIADB_PASSWORD:-local-development-password}@db:3306/ppong_nya?connection_limit=10&pool_timeout=10&connect_timeout=10
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      AUTH_SECRET: ${AUTH_SECRET:-local-development-auth-secret-change-me}
-      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@ppong-nya.local}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-ChangeMe123!}
+      PLAYER_CACHE_RETENTION_DAYS: ${PLAYER_CACHE_RETENTION_DAYS:-90}
+      PLAYER_CACHE_MAX_RECORDS: ${PLAYER_CACHE_MAX_RECORDS:-2000}
       TZ: Asia/Seoul
     ports:
       - "3000:3000"
