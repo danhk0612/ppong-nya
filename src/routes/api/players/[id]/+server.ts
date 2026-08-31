@@ -4,6 +4,7 @@ import {
   getPublicPlayerState,
   refreshPublicPlayer,
 } from "$lib/server/services/publicPlayerCache";
+import { runPublicPlayerCacheMaintenance } from "$lib/server/services/publicPlayerRetention";
 import { getPublicPlayerStatistics } from "$lib/server/services/publicPlayerStatistics";
 import type { RequestHandler } from "./$types";
 
@@ -98,6 +99,7 @@ export const GET: RequestHandler = async (event) => {
   }
 
   try {
+    await runPublicPlayerCacheMaintenance();
     const range = parseRange(event.url);
     const cached = await getPublicPlayerState({ playerId, ...range });
     const shouldRefresh =
@@ -133,6 +135,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   try {
+    await runPublicPlayerCacheMaintenance();
     const range = parseRange(event.url);
     const state = await refreshPublicPlayer({
       host: event.url.host,
