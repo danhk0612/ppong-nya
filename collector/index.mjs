@@ -13,12 +13,20 @@ const ONE_SHOT = /^(1|true|yes)$/i.test(process.env.COLLECTOR_ONE_SHOT || "");
 if (!DATABASE_URL) throw new Error("DATABASE_URL is required");
 if (!ACCESS_TOKEN) throw new Error("MAJSOUL_ACCESS_TOKEN is required");
 
-const db = mysql.createPool({ uri: DATABASE_URL, connectionLimit: 4, enableKeepAlive: true });
+const db = mysql.createPool(DATABASE_URL);
 let stopping = false;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const asDate = (unixSeconds) => unixSeconds ? new Date(Number(unixSeconds) * 1000) : null;
 const compactError = (error) => String(error?.message || error || "unknown error").slice(0, 4000);
+
+async function recoverInterruptedWork() {
+  await db.execute(
+    `UPDATE collector_games
+        SET status='RETRY', next_attempt_at=NOW(3), last_error='collector restarted during fetch', updated_at=NOW(3)
+      WHERE status='FETCHING'`,
+  );
+}
 
 async function saveDiscoveredGame(game, filterId, expectedModeId) {
   const uuid = String(game.uuid || "");
@@ -131,6 +139,7 @@ async function heartbeat(message = null) {
 }
 
 async function run() {
+  await recoverInterruptedWork();
   const client = new MajsoulClient({
     accessToken: ACCESS_TOKEN,
     oauthType: process.env.MAJSOUL_OAUTH_TYPE || 7,
