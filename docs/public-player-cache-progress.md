@@ -15,7 +15,7 @@ This file tracks implementation against `docs/public-player-cache-plan.md`.
 - [x] Stage 5 name routing/search simplification
 - [x] Stage 6 membership/favorites runtime removal and data migration
 - [x] Stage 7 retention and cleanup
-- [ ] Stage 8 verification/deployment
+- [ ] Stage 8 production verification/deployment
 
 ## Stage 1 notes
 
@@ -23,11 +23,9 @@ Existing membership/favorite tables remain intentionally untouched during the fi
 
 The shared schema includes `CachedPlayer`, `CachedPlayerGameRecord`, `PlayerQueryCoverage`, and `PlayerStatisticsCache`, with a back-reference from `GameRecord`.
 
-GitHub Actions verifies Prisma client generation, Svelte/TypeScript checks, application build, and Compose configuration. Applying the migration against the production MariaDB and validating migrated runtime data remains part of Stage 8.
-
 ## Stage 2 notes
 
-The public player cache service now provides:
+The public player cache service provides:
 
 - DB-first player lookup
 - shared player identity storage
@@ -66,7 +64,7 @@ The player page now uses the public player API instead of favorite synchronizati
 
 ## Stage 5 notes
 
-Player navigation and search now support both nickname and numeric ID:
+Player navigation and search support both nickname and numeric ID:
 
 - numeric `/player/[id]` access stays canonical
 - nickname routes resolve exact local cached matches first
@@ -88,13 +86,11 @@ The service no longer exposes or executes membership/favorite functionality at r
 - legacy `/records` redirects to the removed account page deleted
 - migration `20260831032000_migrate_favorites_to_public_cache` copies existing favorite players and their linked game records into the shared cache before legacy data is retired
 
-The latest Stage 6 head passed GitHub Actions Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation.
-
-Legacy membership/favorite database models and tables are deliberately retained until the Stage 8 production MariaDB migration verifies that the copied public-cache data is complete. Physical table removal can then be done safely without losing the rollback path.
+Legacy membership/favorite database models and tables remain until production migration verifies that copied public-cache data is complete. Physical table removal can then be done safely without losing the rollback path.
 
 ## Stage 7 notes
 
-Shared-cache retention is now enforced by lightweight maintenance triggered by player API access and throttled to at most once per application process per hour.
+Shared-cache retention is enforced by lightweight maintenance triggered by player API access and throttled to at most once per application process per hour.
 
 Default policy:
 
@@ -105,4 +101,15 @@ Default policy:
 - stale query-coverage markers older than the retention window are removed
 - external `GameRecord` rows that are no longer referenced by public-cache links, legacy favorite links, or a legacy owner are removed
 
-`PLAYER_CACHE_RETENTION_DAYS` and `PLAYER_CACHE_MAX_RECORDS` can override the defaults in Docker/production configuration. The Stage 7 code passed Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation.
+`PLAYER_CACHE_RETENTION_DAYS` and `PLAYER_CACHE_MAX_RECORDS` can override the defaults in Docker/production configuration.
+
+## Stage 8 notes
+
+CI now starts a real MariaDB 11.4 service and applies the complete Prisma migration history before type checking and building the application. This exposed and allowed fixing two MariaDB-specific migration issues before production:
+
+1. public-cache index/constraint identifiers exceeded MariaDB's identifier length limit
+2. the legacy favorite tables use camelCase column names while the new public-cache tables use snake_case mappings
+
+After those fixes, the complete migration history successfully applies to a clean MariaDB 11.4 instance. Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation also pass.
+
+Remaining Stage 8 work is production deployment and runtime verification against the existing production MariaDB data and external API/CAP proxy path. Legacy membership/favorite tables should only be physically dropped after that production data migration is verified.
