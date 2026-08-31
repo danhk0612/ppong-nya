@@ -2,11 +2,11 @@
   "name": "ppong-nya",
   "version": "1.0.0",
   "homepage": "https://ppong-nya.mydepot.kr",
-  "description": "작혼 4인전 플레이어 검색과 즐겨찾기 전적 서비스",
+  "description": "작혼 4인전 플레이어 검색과 기간별 전적 통계 서비스",
   "keywords": [
     "sveltekit",
     "mahjong",
-    "favorites"
+    "statistics"
   ],
   "type": "module",
   "engines": {
