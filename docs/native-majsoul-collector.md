@@ -20,7 +20,7 @@
 조사 기준:
 
 - `SAPikachu/amae-koromo`: 공개 프런트엔드/API 소비 코드
-- `SAPikachu/amae-koromo-scripts`: 공개 수집/처리 스크립트, Apache-2.0
+- `SAPikachu/amae-koromo-scripts`: 공개 수집/처리 스크립트. 저장소의 실제 `LICENSE` 파일은 MIT License이다.
 
 퐁냐 collector는 위 저장소의 작동 원리와 공개 RPC 흐름을 참고해 현재 프로젝트 구조에 맞게 별도로 구현한다. 원본 수집 스택의 CouchDB, Redis, Google Cloud Storage 등은 도입하지 않는다.
 
