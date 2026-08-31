@@ -72,8 +72,10 @@ services:
         condition: service_completed_successfully
     environment:
       DATABASE_URL: mysql://${MARIADB_USER:-ppong_nya}:${MARIADB_PASSWORD}@db:3306/${MARIADB_DATABASE:-ppong_nya}
+      MAJSOUL_UID: ${MAJSOUL_UID:-}
+      MAJSOUL_TOKEN: ${MAJSOUL_TOKEN:-}
       MAJSOUL_ACCESS_TOKEN: ${MAJSOUL_ACCESS_TOKEN:-}
-      MAJSOUL_OAUTH_TYPE: ${MAJSOUL_OAUTH_TYPE:-7}
+      MAJSOUL_OAUTH_TYPE: ${MAJSOUL_OAUTH_TYPE:-22}
       MAJSOUL_URL_BASE: ${MAJSOUL_URL_BASE:-https://mahjongsoul.game.yo-star.com/}
       MAJSOUL_LOGIN_REGION: ${MAJSOUL_LOGIN_REGION:-en}
       COLLECTOR_POLL_INTERVAL_MS: ${COLLECTOR_POLL_INTERVAL_MS:-7000}
