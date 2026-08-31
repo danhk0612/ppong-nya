@@ -32,7 +32,7 @@
   </div>
 
   <Card class="mt-10 overflow-visible" title="플레이어 검색" eyebrow="4인전">
-    <PlayerSearch session={data.session} />
+    <PlayerSearch />
   </Card>
 
   {#if data.session?.user}
