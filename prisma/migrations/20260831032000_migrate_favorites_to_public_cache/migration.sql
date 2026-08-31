@@ -1,6 +1,6 @@
 -- Stage 6: migrate useful favorite-owned player data into the shared public cache.
--- This migration is intentionally idempotent with INSERT IGNORE / ON DUPLICATE KEY UPDATE
--- semantics so existing public-cache rows remain authoritative.
+-- Existing legacy tables use their original camelCase column names; the new public-cache
+-- tables use explicit snake_case mappings.
 
 INSERT INTO `cached_players` (
   `id`,
@@ -13,14 +13,14 @@ INSERT INTO `cached_players` (
 )
 SELECT
   MIN(`fp`.`id`) AS `id`,
-  `fp`.`player_id`,
-  SUBSTRING_INDEX(GROUP_CONCAT(`fp`.`nickname` ORDER BY `fp`.`updated_at` DESC SEPARATOR '\n'), '\n', 1) AS `nickname`,
-  MAX(`fp`.`updated_at`) AS `last_accessed_at`,
-  MAX(`fp`.`updated_at`) AS `last_updated_at`,
-  MIN(`fp`.`created_at`) AS `created_at`,
-  MAX(`fp`.`updated_at`) AS `updated_at`
+  `fp`.`playerId`,
+  SUBSTRING_INDEX(GROUP_CONCAT(`fp`.`nickname` ORDER BY `fp`.`updatedAt` DESC SEPARATOR '\n'), '\n', 1) AS `nickname`,
+  MAX(`fp`.`updatedAt`) AS `last_accessed_at`,
+  MAX(`fp`.`updatedAt`) AS `last_updated_at`,
+  MIN(`fp`.`createdAt`) AS `created_at`,
+  MAX(`fp`.`updatedAt`) AS `updated_at`
 FROM `favorite_players` AS `fp`
-GROUP BY `fp`.`player_id`
+GROUP BY `fp`.`playerId`
 ON DUPLICATE KEY UPDATE
   `nickname` = VALUES(`nickname`),
   `last_accessed_at` = GREATEST(`cached_players`.`last_accessed_at`, VALUES(`last_accessed_at`)),
@@ -37,10 +37,10 @@ INSERT IGNORE INTO `cached_player_game_records` (
 )
 SELECT
   `cp`.`id`,
-  `fgr`.`game_record_id`,
-  `fgr`.`created_at`
+  `fgr`.`gameRecordId`,
+  `fgr`.`createdAt`
 FROM `favorite_game_records` AS `fgr`
 INNER JOIN `favorite_players` AS `fp`
-  ON `fp`.`id` = `fgr`.`favorite_player_id`
+  ON `fp`.`id` = `fgr`.`favoritePlayerId`
 INNER JOIN `cached_players` AS `cp`
-  ON `cp`.`player_id` = `fp`.`player_id`;
+  ON `cp`.`player_id` = `fp`.`playerId`;
