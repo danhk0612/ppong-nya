@@ -63,3 +63,23 @@ services:
       start_period: 30s
     init: true
     restart: unless-stopped
+
+  collector:
+    profiles: ["collector"]
+    image: ghcr.io/danhk0612/ppong-nya-collector:${IMAGE_TAG:-latest}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: mysql://${MARIADB_USER:-ppong_nya}:${MARIADB_PASSWORD}@db:3306/${MARIADB_DATABASE:-ppong_nya}
+      MAJSOUL_ACCESS_TOKEN: ${MAJSOUL_ACCESS_TOKEN:-}
+      MAJSOUL_OAUTH_TYPE: ${MAJSOUL_OAUTH_TYPE:-7}
+      MAJSOUL_URL_BASE: ${MAJSOUL_URL_BASE:-https://mahjongsoul.game.yo-star.com/}
+      MAJSOUL_LOGIN_REGION: ${MAJSOUL_LOGIN_REGION:-en}
+      COLLECTOR_POLL_INTERVAL_MS: ${COLLECTOR_POLL_INTERVAL_MS:-7000}
+      COLLECTOR_RECORD_DELAY_MS: ${COLLECTOR_RECORD_DELAY_MS:-1200000}
+      COLLECTOR_RECORD_BATCH_SIZE: ${COLLECTOR_RECORD_BATCH_SIZE:-20}
+      COLLECTOR_LIST_ONLY: ${COLLECTOR_LIST_ONLY:-false}
+      TZ: ${TZ:-Asia/Seoul}
+    init: true
+    restart: unless-stopped

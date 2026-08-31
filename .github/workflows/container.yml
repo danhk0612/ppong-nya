@@ -35,8 +35,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract image metadata
-        id: meta
+      - name: Extract app image metadata
+        id: app_meta
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/danhk0612/ppong-nya
@@ -48,14 +48,39 @@ jobs:
             org.opencontainers.image.title=ppong-nya
             org.opencontainers.image.description=Korean Mahjong Soul 4-player records and statistics service
 
-      - name: Build and publish image
+      - name: Build and publish app image
         uses: docker/build-push-action@v7
         with:
           context: .
           target: runtime
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.app_meta.outputs.tags }}
+          labels: ${{ steps.app_meta.outputs.labels }}
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+
+      - name: Extract collector image metadata
+        id: collector_meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/danhk0612/ppong-nya-collector
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=sha,prefix=sha-
+          labels: |
+            org.opencontainers.image.title=ppong-nya-collector
+            org.opencontainers.image.description=Native Mahjong Soul 4-player game collector for ppong-nya
+
+      - name: Build and publish collector image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: collector/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.collector_meta.outputs.tags }}
+          labels: ${{ steps.collector_meta.outputs.labels }}
+          cache-from: type=gha,scope=collector
+          cache-to: type=gha,mode=max,scope=collector

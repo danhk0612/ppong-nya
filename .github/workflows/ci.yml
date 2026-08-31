@@ -62,8 +62,15 @@ jobs:
       - name: Verify the dynamic root is not shadowed
         run: test ! -f build/client/index.html
 
+      - name: Install collector dependencies
+        run: npm install --prefix collector --omit=dev --ignore-scripts
+
+      - name: Validate collector mode mapping
+        run: npm run --prefix collector smoke
+
       - name: Validate Docker Compose files
         run: |
           docker compose -f docker-compose.yml config > /dev/null
           docker compose --env-file .env.nas.example -f compose.production.yml config > /dev/null
           docker compose --env-file .env.oracle.example -f compose.production.yml -f compose.oracle.yml config > /dev/null
+          docker compose --profile collector --env-file .env.oracle.example -f compose.production.yml -f compose.oracle.yml config > /dev/null
