@@ -5,6 +5,11 @@ import WebSocket from "ws";
 const DEFAULT_BASE = "https://mahjongsoul.game.yo-star.com/";
 const YOSTAR_SDK_VERSION = "4.16.2";
 const YOSTAR_SIGNING_SALT = "347467131a466f6865d7f2662e38841fbe2adb23";
+const UNITY_LOBBY_ENDPOINTS = {
+  en: "wss://engs.mahjongsoul.com",
+  kr: "wss://engs.mahjongsoul.com",
+  jp: "wss://jpgs.mahjongsoul.com",
+};
 
 const YOSTAR_REGIONS = {
   en: { identifier: "US", pid: "US-MAJONGSOUL", lang: "en", sdkUrl: "https://en-sdk-api.yostarplat.com" },
@@ -139,6 +144,7 @@ export class MajsoulClient {
     routeId = process.env.MAJSOUL_ROUTE_ID,
     resourceVersion = process.env.MAJSOUL_RESOURCE_VERSION,
     productVersion = process.env.MAJSOUL_PRODUCT_VERSION,
+    lobbyEndpoint = process.env.MAJSOUL_LOBBY_ENDPOINT,
   }) {
     this.baseUrl = baseUrl;
     this.uid = uid;
@@ -152,6 +158,7 @@ export class MajsoulClient {
     this.routeId = routeId || `${loginRegion}-2`;
     this.resourceVersion = resourceVersion;
     this.productVersion = productVersion;
+    this.lobbyEndpoint = lobbyEndpoint;
     this.pending = new Map();
   }
 
@@ -204,7 +211,8 @@ export class MajsoulClient {
     const runtimeVersion = this.resourceVersion || legacyRuntimeVersion;
     this.clientVersionString = `WebGL_2022-${runtimeVersion}`;
     this.clientVersion = this.productVersion ? { package: this.productVersion, resource: runtimeVersion } : { resource: runtimeVersion };
-    const gateway = runtime.gateway.replace(/^http/, "ws").replace(/\/$/, "") + "/gateway";
+    const legacyGateway = runtime.gateway.replace(/^http/, "ws").replace(/\/$/, "") + "/gateway";
+    const gateway = this.lobbyEndpoint || UNITY_LOBBY_ENDPOINTS[this.loginRegion] || legacyGateway;
     this.ws = new WebSocket(gateway, { headers: { Origin: this.baseUrl.replace(/\/$/, ""), "User-Agent": "Mozilla/5.0 ppong-nya-collector" } });
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("WebSocket connect timeout")), 15000);
