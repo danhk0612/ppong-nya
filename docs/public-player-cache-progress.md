@@ -12,7 +12,7 @@ This file tracks implementation against `docs/public-player-cache-plan.md`.
 - [x] Stage 2 public player data service
 - [x] Stage 3 range and table filtering
 - [x] Stage 4 player page/UI
-- [ ] Stage 5 name routing/search simplification
+- [x] Stage 5 name routing/search simplification
 - [ ] Stage 6 membership/favorites removal
 - [ ] Stage 7 retention and cleanup
 - [ ] Stage 8 verification/deployment
@@ -64,4 +64,16 @@ The player page now uses the public player API instead of favorite synchronizati
 - manual refresh button
 - removal of favorite controls from the player page
 
-The latest Stage 4 commit passed GitHub Actions Prisma generation, Svelte/TypeScript checks, application build, and Compose validation. External API behavior and production MariaDB migration are intentionally deferred to Stage 8 runtime verification.
+## Stage 5 notes
+
+Player navigation and search now support both nickname and numeric ID:
+
+- numeric `/player/[id]` access stays canonical
+- nickname routes resolve exact local cached matches first
+- unresolved names fall back to the existing upstream player search
+- one exact match redirects to the canonical numeric player URL
+- multiple exact matches redirect to the search result chooser instead of guessing
+- `PlayerSearch` accepts nickname or numeric ID and no longer contains login/favorite actions
+- the players search page no longer depends on session data
+
+The Stage 5 head passed GitHub Actions Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation. External API behavior and production MariaDB migration remain part of Stage 8 runtime verification.
