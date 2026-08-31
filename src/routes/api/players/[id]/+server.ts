@@ -4,6 +4,7 @@ import {
   getPublicPlayerState,
   refreshPublicPlayer,
 } from "$lib/server/services/publicPlayerCache";
+import { getPublicPlayerStatistics } from "$lib/server/services/publicPlayerStatistics";
 import type { RequestHandler } from "./$types";
 
 function parseDate(value: string | null, fallback: Date) {
@@ -34,16 +35,20 @@ function parseRange(url: URL) {
   };
 }
 
-function serializeState(state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>) {
+function serializeState(
+  state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
+  statistics: Awaited<ReturnType<typeof getPublicPlayerStatistics>>,
+) {
   return {
     ...state,
     player: {
       ...state.player,
       latestTimestamp:
-        state.player?.latestTimestamp == null
+        state.player.latestTimestamp == null
           ? null
           : Number(state.player.latestTimestamp),
     },
+    statistics,
   };
 }
 
@@ -82,7 +87,11 @@ export const GET: RequestHandler = async (event) => {
       return json({ message: "플레이어 정보를 찾지 못했습니다." }, { status: 404 });
     }
 
-    return json(serializeState(state));
+    const statistics = await getPublicPlayerStatistics({
+      host: event.url.host,
+      state,
+    });
+    return json(serializeState(state, statistics));
   } catch (reason) {
     return errorResponse(reason);
   }
@@ -107,7 +116,12 @@ export const POST: RequestHandler = async (event) => {
       return json({ message: "플레이어 정보를 찾지 못했습니다." }, { status: 404 });
     }
 
-    return json(serializeState(state));
+    const statistics = await getPublicPlayerStatistics({
+      host: event.url.host,
+      state,
+      force: true,
+    });
+    return json(serializeState(state, statistics));
   } catch (reason) {
     return errorResponse(reason);
   }
