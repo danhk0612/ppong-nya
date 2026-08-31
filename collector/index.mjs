@@ -5,6 +5,7 @@ import { FOUR_PLAYER_RANKED_MODES, MODE_IDS } from "./modes.mjs";
 const DATABASE_URL = process.env.DATABASE_URL;
 const MAJSOUL_UID = process.env.MAJSOUL_UID;
 const MAJSOUL_TOKEN = process.env.MAJSOUL_TOKEN;
+const MAJSOUL_DEVICE_ID = process.env.MAJSOUL_DEVICE_ID;
 const LEGACY_ACCESS_TOKEN = process.env.MAJSOUL_ACCESS_TOKEN;
 const OAUTH_TYPE = Number(process.env.MAJSOUL_OAUTH_TYPE || (MAJSOUL_UID && MAJSOUL_TOKEN ? 22 : 7));
 const POLL_INTERVAL_MS = Math.max(5000, Number(process.env.COLLECTOR_POLL_INTERVAL_MS || 7000));
@@ -16,6 +17,9 @@ const ONE_SHOT = /^(1|true|yes)$/i.test(process.env.COLLECTOR_ONE_SHOT || "");
 if (!DATABASE_URL) throw new Error("DATABASE_URL is required");
 if (!(MAJSOUL_UID && MAJSOUL_TOKEN) && !LEGACY_ACCESS_TOKEN) {
   throw new Error("MAJSOUL_UID and MAJSOUL_TOKEN are required for Yostar login (or MAJSOUL_ACCESS_TOKEN for legacy login)");
+}
+if (OAUTH_TYPE === 22 && !MAJSOUL_DEVICE_ID) {
+  throw new Error("MAJSOUL_DEVICE_ID is required for Yostar OAuth type 22 saved-session login");
 }
 
 const db = mysql.createPool(DATABASE_URL);
@@ -148,10 +152,15 @@ async function run() {
   const client = new MajsoulClient({
     uid: MAJSOUL_UID,
     token: MAJSOUL_TOKEN,
+    deviceId: MAJSOUL_DEVICE_ID,
     accessToken: LEGACY_ACCESS_TOKEN,
     oauthType: OAUTH_TYPE,
     baseUrl: process.env.MAJSOUL_URL_BASE,
     loginRegion: process.env.MAJSOUL_LOGIN_REGION || "en",
+    yostarRegion: process.env.MAJSOUL_YOSTAR_REGION,
+    yostarSdkUrl: process.env.MAJSOUL_YOSTAR_SDK_URL,
+    resourceVersion: process.env.MAJSOUL_RESOURCE_VERSION,
+    productVersion: process.env.MAJSOUL_PRODUCT_VERSION,
   });
   try {
     const login = await client.connect();
