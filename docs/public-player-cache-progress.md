@@ -13,7 +13,7 @@ This file tracks implementation against `docs/public-player-cache-plan.md`.
 - [x] Stage 3 range and table filtering
 - [x] Stage 4 player page/UI
 - [x] Stage 5 name routing/search simplification
-- [ ] Stage 6 membership/favorites removal
+- [x] Stage 6 membership/favorites runtime removal and data migration
 - [ ] Stage 7 retention and cleanup
 - [ ] Stage 8 verification/deployment
 
@@ -76,4 +76,18 @@ Player navigation and search now support both nickname and numeric ID:
 - `PlayerSearch` accepts nickname or numeric ID and no longer contains login/favorite actions
 - the players search page no longer depends on session data
 
-The Stage 5 head passed GitHub Actions Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation. External API behavior and production MariaDB migration remain part of Stage 8 runtime verification.
+## Stage 6 notes
+
+The service no longer exposes or executes membership/favorite functionality at runtime:
+
+- authentication hooks and Auth.js configuration removed
+- login/account/auth/favorite routes and APIs removed
+- account/favorite navigation and homepage sections removed
+- client favorite synchronization and server auth/session/password helpers removed
+- auth/OAuth/default-admin environment requirements removed from application and Compose examples
+- legacy `/records` redirects to the removed account page deleted
+- migration `20260831032000_migrate_favorites_to_public_cache` copies existing favorite players and their linked game records into the shared cache before legacy data is retired
+
+The latest Stage 6 head passed GitHub Actions Prisma generation, Svelte/TypeScript checks, application build, root-route verification, and Compose validation.
+
+Legacy membership/favorite database models and tables are deliberately retained until the Stage 8 production MariaDB migration verifies that the copied public-cache data is complete. Physical table removal can then be done safely without losing the rollback path.
