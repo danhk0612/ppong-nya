@@ -35,12 +35,35 @@ function parseRange(url: URL) {
   };
 }
 
+function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>["records"][number]) {
+  const { gameRecord } = link;
+  if (gameRecord.rawPayload) return gameRecord.rawPayload;
+
+  return {
+    modeId: gameRecord.externalModeId,
+    uuid: gameRecord.uuid,
+    startTime: Math.floor(gameRecord.startedAt.getTime() / 1000),
+    endTime: Math.floor((gameRecord.endedAt ?? gameRecord.startedAt).getTime() / 1000),
+    players: gameRecord.players.map((player) => ({
+      accountId: Number(player.accountId),
+      nickname: player.nickname,
+      level:
+        player.metadata &&
+        typeof player.metadata === "object" &&
+        !Array.isArray(player.metadata) &&
+        "level" in player.metadata
+          ? Number(player.metadata.level)
+          : 0,
+      score: player.score,
+    })),
+  };
+}
+
 function serializeState(
   state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
   statistics: Awaited<ReturnType<typeof getPublicPlayerStatistics>>,
 ) {
   return {
-    ...state,
     player: {
       ...state.player,
       latestTimestamp:
@@ -48,6 +71,12 @@ function serializeState(
           ? null
           : Number(state.player.latestTimestamp),
     },
+    records: state.records.map(serializeRecord),
+    modeKey: state.modeKey,
+    periodStart: state.periodStart,
+    periodEnd: state.periodEnd,
+    rangeCovered: state.rangeCovered,
+    stale: state.stale,
     statistics,
   };
 }
