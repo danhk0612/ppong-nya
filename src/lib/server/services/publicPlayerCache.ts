@@ -61,7 +61,7 @@ export type PublicPlayerRange = {
 };
 
 export type PublicPlayerState = {
-  player: Awaited<ReturnType<typeof getCachedPlayer>>;
+  player: NonNullable<Awaited<ReturnType<typeof getCachedPlayer>>>;
   records: Awaited<ReturnType<typeof getCachedPlayerRecords>>;
   modeKey: string;
   periodStart: Date;
@@ -231,6 +231,21 @@ export async function getCachedPlayerRecords(input: {
   });
 }
 
+async function getLatestCachedRecordStart(input: {
+  cachedPlayerId: string;
+  externalModeIds: number[];
+}) {
+  const latest = await db.cachedPlayerGameRecord.findFirst({
+    where: {
+      cachedPlayerId: input.cachedPlayerId,
+      gameRecord: { externalModeId: { in: input.externalModeIds } },
+    },
+    orderBy: { gameRecord: { startedAt: "desc" } },
+    select: { gameRecord: { select: { startedAt: true } } },
+  });
+  return latest?.gameRecord.startedAt ?? null;
+}
+
 export async function upsertPlayerStatisticsCache(input: {
   cachedPlayerId: string;
   cacheKey: string;
@@ -273,10 +288,11 @@ async function fetchPlayerMetadata(input: {
 async function ensureCachedPlayer(input: {
   host: string;
   playerId: string;
+  refreshIdentity?: boolean;
   force?: boolean;
 }) {
   const existing = await getCachedPlayer(input.playerId);
-  if (existing && !input.force) {
+  if (existing && !input.refreshIdentity) {
     await db.cachedPlayer.update({
       where: { id: existing.id },
       data: { lastAccessedAt: new Date() },
@@ -284,7 +300,11 @@ async function ensureCachedPlayer(input: {
     return existing;
   }
 
-  const metadata = await fetchPlayerMetadata(input);
+  const metadata = await fetchPlayerMetadata({
+    host: input.host,
+    playerId: input.playerId,
+    force: input.force,
+  });
   const nickname = metadata.nickname?.trim();
   if (!nickname) {
     throw Object.assign(new Error("플레이어 정보를 찾지 못했습니다."), { status: 404 });
@@ -398,10 +418,13 @@ async function fetchRecordRange(input: {
   let cursorMillis = input.periodEnd.getTime();
   const forceTag = input.force ? `&tag=${Date.now()}` : "";
 
-  while (cursorMillis > startMillis && result.length < PUBLIC_PLAYER_CACHE_DEFAULTS.maxRecordsPerPlayer) {
+  while (
+    cursorMillis > startMillis &&
+    result.length < PUBLIC_PLAYER_CACHE_DEFAULTS.maxRecordsPerPlayer
+  ) {
     const path = `player_records/${input.playerId}/${cursorMillis}/${startMillis}?limit=${RECORD_PAGE_SIZE}&mode=${modeKey}&descending=true${forceTag}`;
-    const chunk = (await readExternalJson<unknown[]>(input.host, path)).filter((record) =>
-      isExternalRecord(record, input.playerId),
+    const chunk = (await readExternalJson<unknown[]>(input.host, path)).filter(
+      (record) => isExternalRecord(record, input.playerId),
     );
 
     if (!chunk.length) break;
@@ -428,7 +451,7 @@ export async function getPublicPlayerState(input: {
   periodStart: Date;
   periodEnd: Date;
   externalModeIds?: number[];
-}) : Promise<PublicPlayerState | null> {
+}): Promise<PublicPlayerState | null> {
   const player = await getCachedPlayer(input.playerId);
   if (!player) return null;
 
@@ -486,9 +509,12 @@ export async function refreshPublicPlayer(input: {
     });
   }
 
+  const existing = await getCachedPlayer(input.playerId);
+  const identityStale = !existing || isPublicPlayerStale(existing.lastUpdatedAt);
   let player = await ensureCachedPlayer({
     host: input.host,
     playerId: input.playerId,
+    refreshIdentity: Boolean(input.force || identityStale),
     force: input.force,
   });
   const modeKey = getPublicPlayerModeKey(externalModeIds);
@@ -501,14 +527,28 @@ export async function refreshPublicPlayer(input: {
   const stale = isPublicPlayerStale(player.lastUpdatedAt);
 
   if (input.force || !rangeCovered || stale) {
-    const records = await fetchRecordRange({
-      host: input.host,
-      playerId: input.playerId,
-      periodStart: input.periodStart,
-      periodEnd: input.periodEnd,
-      externalModeIds,
-      force: input.force,
-    });
+    let fetchStart = input.periodStart;
+    if (rangeCovered && stale && !input.force) {
+      const latestRecordStart = await getLatestCachedRecordStart({
+        cachedPlayerId: player.id,
+        externalModeIds,
+      });
+      if (latestRecordStart && latestRecordStart > fetchStart) {
+        fetchStart = new Date(latestRecordStart.getTime() + 1);
+      }
+    }
+
+    const records =
+      fetchStart < input.periodEnd
+        ? await fetchRecordRange({
+            host: input.host,
+            playerId: input.playerId,
+            periodStart: fetchStart,
+            periodEnd: input.periodEnd,
+            externalModeIds,
+            force: input.force,
+          })
+        : [];
 
     await ingestExternalRecords(player.id, records);
     await upsertPlayerQueryCoverage({
