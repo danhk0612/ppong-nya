@@ -71,8 +71,22 @@
     debounceToken = setTimeout(() => void runSearch(normalizedQuery), 500);
   }
 
-  function openPlayer(player: PlayerSearchResult) {
-    goto(`/player/${player.id}`);
+  async function openPlayer(player: PlayerSearchResult) {
+    try {
+      await fetch(`/api/players/${player.id}/seed`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          nickname: player.nickname.trim() || player.nickname,
+          level: player.level.id,
+          latestTimestamp: player.latest_timestamp,
+        }),
+      });
+    } catch {
+      // Navigation should still continue. The detail API can retry upstream itself.
+    }
+
+    await goto(`/player/${player.id}`);
   }
 
   function openDirect() {
@@ -159,7 +173,7 @@
             class:opacity-50={isOlderDuplicate(player)}
             type="button"
             aria-label={`${player.nickname.trim()} ${LevelWithDelta.getTag(player.level)} 전적 보기`}
-            onclick={() => openPlayer(player)}
+            onclick={() => void openPlayer(player)}
           >
             <span
               class:line-through={isOlderDuplicate(player)}
