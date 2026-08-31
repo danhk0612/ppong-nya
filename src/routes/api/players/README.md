@@ -1,1 +1,0 @@
-Public player API route namespace. Stage 2 will expose shared player lookup, range fetch/refresh, and filtered statistics here. This file is temporary documentation until route handlers are added.
