@@ -71,15 +71,59 @@ function splitOAuthCredential(value) {
 }
 
 export class MajsoulClient {
-  constructor({ baseUrl = process.env.MAJSOUL_URL_BASE || DEFAULT_BASE, accessToken, oauthType = 7, loginRegion = "en" }) {
+  constructor({
+    baseUrl = process.env.MAJSOUL_URL_BASE || DEFAULT_BASE,
+    uid,
+    token,
+    accessToken,
+    oauthType = uid && token ? 22 : 7,
+    loginRegion = "en",
+  }) {
     this.baseUrl = baseUrl;
+    this.uid = uid;
+    this.token = token;
     this.accessToken = accessToken;
     this.oauthType = Number(oauthType);
     this.loginRegion = loginRegion;
     this.pending = new Map();
   }
+
+  async resolveLoginAccessToken() {
+    if (this.oauthType === 22) {
+      if (!this.uid || !this.token) {
+        throw new Error("MAJSOUL_UID and MAJSOUL_TOKEN are required for Yostar OAuth type 22");
+      }
+      const auth = await this.rpc(".lq.Lobby.oauth2Auth", {
+        type: 22,
+        code: this.token,
+        uid: this.uid,
+        client_version_string: this.clientVersionString,
+      });
+      if (!auth.access_token) {
+        throw new Error(`Mahjong Soul oauth2Auth(type=22) failed: ${JSON.stringify(auth.error ?? auth)}`);
+      }
+      return auth.access_token;
+    }
+
+    if (!this.accessToken) throw new Error("MAJSOUL_ACCESS_TOKEN is required for legacy OAuth login");
+    let accessToken = this.accessToken;
+    if (this.oauthType === 7) {
+      const credential = splitOAuthCredential(accessToken);
+      if (credential) {
+        const auth = await this.rpc(".lq.Lobby.oauth2Auth", {
+          type: 7,
+          code: credential.code,
+          uid: credential.uid,
+          client_version_string: this.clientVersionString,
+        });
+        if (!auth.access_token) throw new Error("Mahjong Soul oauth2Auth(type=7) did not return an access token");
+        accessToken = auth.access_token;
+      }
+    }
+    return accessToken;
+  }
+
   async connect() {
-    if (!this.accessToken) throw new Error("MAJSOUL_ACCESS_TOKEN is required");
     const runtime = await resolveRuntime(this.baseUrl);
     this.codec = new RpcCodec(runtime.protoJson);
     this.clientVersionString = `web-${runtime.version.replace(/\.[a-z]+$/i, "")}`;
@@ -100,22 +144,9 @@ export class MajsoulClient {
       for (const waiter of this.pending.values()) waiter.reject(new Error("Mahjong Soul connection closed"));
       this.pending.clear();
     });
-    await this.rpc(".lq.Lobby.heatbeat", { no_operation_counter: 0 });
 
-    let accessToken = this.accessToken;
-    if (this.oauthType === 7) {
-      const credential = splitOAuthCredential(accessToken);
-      if (credential) {
-        const auth = await this.rpc(".lq.Lobby.oauth2Auth", {
-          type: this.oauthType,
-          code: credential.code,
-          uid: credential.uid,
-          client_version_string: this.clientVersionString,
-        });
-        if (!auth.access_token) throw new Error("Mahjong Soul oauth2Auth did not return an access token");
-        accessToken = auth.access_token;
-      }
-    }
+    await this.rpc(".lq.Lobby.heatbeat", { no_operation_counter: 0 });
+    const accessToken = await this.resolveLoginAccessToken();
 
     let check = await this.rpc(".lq.Lobby.oauth2Check", { type: this.oauthType, access_token: accessToken });
     if (!check.has_account) {
@@ -149,6 +180,7 @@ export class MajsoulClient {
     if (!login.account_id) throw new Error(`Mahjong Soul login failed: ${JSON.stringify(login.error ?? login.error_code ?? login)}`);
     return login;
   }
+
   rpc(methodName, payload) {
     const encoded = this.codec.encode(methodName, payload);
     return new Promise((resolve, reject) => {
