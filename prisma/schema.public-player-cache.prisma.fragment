@@ -1,0 +1,74 @@
+// Temporary review fragment for Stage 1. These models are merged into schema.prisma during Stage 1.
+
+model CachedPlayer {
+  id              String    @id @default(cuid())
+  playerId        String    @unique @map("player_id") @db.VarChar(191)
+  nickname        String    @db.VarChar(120)
+  level           Int?
+  maxLevel        Int?      @map("max_level")
+  latestTimestamp BigInt?   @map("latest_timestamp")
+  lastAccessedAt  DateTime  @default(now()) @map("last_accessed_at") @db.DateTime(3)
+  lastUpdatedAt   DateTime? @map("last_updated_at") @db.DateTime(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  gameRecords      CachedPlayerGameRecord[]
+  queryCoverages   PlayerQueryCoverage[]
+  statisticsCaches PlayerStatisticsCache[]
+
+  @@index([nickname])
+  @@index([lastAccessedAt])
+  @@index([lastUpdatedAt])
+  @@map("cached_players")
+}
+
+model CachedPlayerGameRecord {
+  cachedPlayerId String   @map("cached_player_id")
+  gameRecordId   String   @map("game_record_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  cachedPlayer CachedPlayer @relation(fields: [cachedPlayerId], references: [id], onDelete: Cascade)
+  gameRecord   GameRecord   @relation(fields: [gameRecordId], references: [id], onDelete: Cascade)
+
+  @@id([cachedPlayerId, gameRecordId])
+  @@index([gameRecordId])
+  @@map("cached_player_game_records")
+}
+
+model PlayerQueryCoverage {
+  id             String   @id @default(cuid())
+  cachedPlayerId String   @map("cached_player_id")
+  modeKey        String   @map("mode_key") @db.VarChar(191)
+  periodStart    DateTime @map("period_start") @db.DateTime(3)
+  periodEnd      DateTime @map("period_end") @db.DateTime(3)
+  fetchedAt      DateTime @default(now()) @map("fetched_at") @db.DateTime(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  cachedPlayer CachedPlayer @relation(fields: [cachedPlayerId], references: [id], onDelete: Cascade)
+
+  @@unique([cachedPlayerId, modeKey, periodStart, periodEnd])
+  @@index([cachedPlayerId, periodStart, periodEnd])
+  @@index([fetchedAt])
+  @@map("player_query_coverages")
+}
+
+model PlayerStatisticsCache {
+  id             String    @id @default(cuid())
+  cachedPlayerId String    @map("cached_player_id")
+  cacheKey       String    @unique @map("cache_key") @db.VarChar(191)
+  modeKey        String    @map("mode_key") @db.VarChar(191)
+  periodStart    DateTime  @map("period_start") @db.DateTime(3)
+  periodEnd      DateTime  @map("period_end") @db.DateTime(3)
+  payload        Json
+  computedAt     DateTime  @default(now()) @map("computed_at") @db.DateTime(3)
+  expiresAt      DateTime? @map("expires_at") @db.DateTime(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  cachedPlayer CachedPlayer @relation(fields: [cachedPlayerId], references: [id], onDelete: Cascade)
+
+  @@index([cachedPlayerId, periodStart, periodEnd])
+  @@index([expiresAt])
+  @@map("player_statistics_caches")
+}
