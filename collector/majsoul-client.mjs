@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import protobuf from "protobufjs";
 import WebSocket from "ws";
 
@@ -59,7 +60,7 @@ class RpcCodec {
     if (!responseType) return null;
     this.pendingTypes.delete(id);
     const wrapper = this.wrapper.decode(bytes.subarray(3));
-    return { id, payload: responseType.toObject(responseType.decode(wrapper.data), { longs: String, bytes: Buffer }) };
+    return { id, payload: responseType.toObject(responseType.decode(wrapper.data), { longs: String }) };
   }
 }
 
@@ -101,7 +102,7 @@ export class MajsoulClient {
       access_token: this.accessToken,
       reconnect: false,
       device: { platform: "pc", hardware: "pc", os: "linux", os_version: "server", is_browser: false, software: "ppong-nya", sale_platform: "web" },
-      random_key: crypto.randomUUID(),
+      random_key: randomUUID(),
       client_version_string: this.clientVersionString,
       currency_platforms: [1, 2, 5, 6, 8, 10, 11],
       tag: this.loginRegion,
