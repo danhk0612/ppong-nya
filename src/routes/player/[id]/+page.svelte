@@ -23,12 +23,12 @@
 
   const MODE_OPTIONS = [
     { value: "all", label: "전체" },
-    { value: "16", label: "왕좌 남풍" },
-    { value: "12", label: "옥 남풍" },
-    { value: "8", label: "금 남풍" },
-    { value: "15", label: "왕좌 동풍" },
-    { value: "11", label: "옥 동풍" },
-    { value: "9", label: "금 동풍" },
+    { value: "16", label: "왕좌탁" },
+    { value: "12", label: "옥탁" },
+    { value: "8", label: "금탁" },
+    { value: "15", label: "왕좌탁 동풍전" },
+    { value: "11", label: "옥탁 동풍전" },
+    { value: "9", label: "금탁 동풍전" },
   ];
 
   const PERIOD_OPTIONS = [
