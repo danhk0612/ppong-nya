@@ -9,13 +9,11 @@ const DATA_MIRRORS = [
   "https://4.data.amae-koromo.com/",
 ];
 const DEFAULT_API_SUFFIX = dev ? "api-test/v2/pl4/" : "api/v2/pl4/";
-const PROBE_TIMEOUT_MS = 15_000;
 const REQUEST_TIMEOUT_MS = 5_000;
 const MAX_CACHE_BODY_BYTES = 16 * 1024 * 1024;
 const DEFAULT_PUBLIC_HOST = "ppong-nya.mydepot.kr";
 
 let selectedMirror = DATA_MIRRORS[0];
-let mirrorProbePromise: Promise<Response> | null = null;
 
 type CachePolicy = {
   pattern: string;
@@ -156,20 +154,13 @@ function normalizePath(path: string) {
 
 function getApiSuffix(host: string) {
   const contestMatch = /^([^.]+)\.contest\./i.exec(host);
-
-  if (contestMatch) {
-    return `api/contest/${contestMatch[1]}/`;
-  }
-
+  if (contestMatch) return `api/contest/${contestMatch[1]}/`;
   return DEFAULT_API_SUFFIX;
 }
 
 function isAllowedExternalPath(path: string) {
   const normalizedPath = normalizePath(path);
-
-  if (normalizedPath.includes("..") || normalizedPath.includes("//")) {
-    return false;
-  }
+  if (normalizedPath.includes("..") || normalizedPath.includes("//")) return false;
 
   return EXTERNAL_API_ENDPOINT_POLICIES.some(({ pattern }) => {
     const prefix = pattern.split(":")[0];
@@ -183,18 +174,14 @@ function isAllowedExternalPath(path: string) {
 function buildCacheKey(method: string, endpoint: string, requestBody = "") {
   const rawKey = `${method}:${endpoint}:${requestBody}`;
   let hash = 5381;
-
   for (let index = 0; index < rawKey.length; index += 1) {
     hash = (hash * 33) ^ rawKey.charCodeAt(index);
   }
-
   return `${method}:${endpoint.slice(0, 120)}:${(hash >>> 0).toString(36)}`;
 }
 
 function getCachePolicy(path: string, method: string) {
-  if (method !== "GET" && method !== "POST") {
-    return null;
-  }
+  if (method !== "GET" && method !== "POST") return null;
 
   const normalizedPath = normalizePath(path);
   const policy = EXTERNAL_API_ENDPOINT_POLICIES.find(({ pattern }) => {
@@ -205,11 +192,12 @@ function getCachePolicy(path: string, method: string) {
     );
   });
 
-  if (!policy?.cacheTtlSeconds || policy.pattern.startsWith("view_game")) {
-    return null;
-  }
-
+  if (!policy?.cacheTtlSeconds || policy.pattern.startsWith("view_game")) return null;
   return policy;
+}
+
+function isRetryableStatus(status: number) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
 async function fetchWithTimeout(
@@ -219,7 +207,6 @@ async function fetchWithTimeout(
 ) {
   const abortController = new AbortController();
   const timeoutToken = setTimeout(() => abortController.abort(), timeout);
-
   try {
     return await fetch(url, { ...init, signal: abortController.signal });
   } finally {
@@ -227,47 +214,49 @@ async function fetchWithTimeout(
   }
 }
 
-async function fetchFromMirror(path: string, init: RequestInit) {
-  try {
-    return await fetchWithTimeout(selectedMirror + path, init);
-  } catch (error) {
-    console.warn(`Failed to fetch external API from ${selectedMirror}`, error);
+function orderedMirrors() {
+  return [selectedMirror, ...DATA_MIRRORS.filter((mirror) => mirror !== selectedMirror)];
+}
 
-    if (mirrorProbePromise) {
-      await mirrorProbePromise.catch(() => undefined);
-      return fetchWithTimeout(selectedMirror + path, init);
+async function fetchFromMirror(path: string, init: RequestInit) {
+  let lastResponse: Response | null = null;
+  let lastError: unknown = null;
+
+  for (const mirror of orderedMirrors()) {
+    try {
+      const response = await fetchWithTimeout(mirror + path, init);
+      if (!isRetryableStatus(response.status)) {
+        selectedMirror = mirror;
+        return response;
+      }
+
+      lastResponse = response;
+      console.warn(`External API ${response.status} from ${mirror}; trying next mirror.`);
+    } catch (error) {
+      lastError = error;
+      console.warn(`Failed to fetch external API from ${mirror}`, error);
     }
   }
 
-  mirrorProbePromise = Promise.any(
-    DATA_MIRRORS.map((mirror) =>
-      fetchWithTimeout(mirror + path, init, PROBE_TIMEOUT_MS).then(
-        (response) => {
-          selectedMirror = mirror;
-          return response;
-        },
-      ),
-    ),
-  );
-  mirrorProbePromise.finally(() => {
-    mirrorProbePromise = null;
-  });
+  if (lastResponse) return lastResponse;
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("All external API mirrors failed.");
+}
 
-  return mirrorProbePromise;
+async function readCache(cacheKey: string) {
+  return db.externalApiCache.findUnique({ where: { cacheKey } });
 }
 
 async function readUsableCache(cacheKey: string) {
-  const cached = await db.externalApiCache.findUnique({ where: { cacheKey } });
-
-  if (!cached || cached.expiresAt <= new Date()) {
-    return null;
-  }
-
+  const cached = await readCache(cacheKey);
+  if (!cached || cached.expiresAt <= new Date()) return null;
   return cached;
 }
 
 function responseFromCache(
-  cached: NonNullable<Awaited<ReturnType<typeof readUsableCache>>>,
+  cached: NonNullable<Awaited<ReturnType<typeof readCache>>>,
+  state: "hit" | "stale" = "hit",
 ) {
   const headers = new Headers(
     (cached.responseHeaders as Record<string, string> | null) ?? {},
@@ -276,7 +265,8 @@ function responseFromCache(
   headers.delete("content-encoding");
   headers.delete("transfer-encoding");
   headers.set("content-type", "application/json");
-  headers.set("x-ppong-nya-cache", "hit");
+  headers.set("x-ppong-nya-cache", state);
+  if (state === "stale") headers.set("warning", '110 - "Response is stale"');
 
   return new Response(JSON.stringify(cached.payload), {
     status: cached.status,
@@ -294,10 +284,7 @@ async function writeCache(params: {
   ttlSeconds: number;
 }) {
   const bodyLength = JSON.stringify(params.payload).length;
-
-  if (bodyLength > MAX_CACHE_BODY_BYTES) {
-    return;
-  }
+  if (bodyLength > MAX_CACHE_BODY_BYTES) return;
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + params.ttlSeconds * 1000);
@@ -340,7 +327,6 @@ async function finalizeJsonResponse(params: {
     const resultResponse = await fetchFromMirror(resultPath, {
       headers: { "Cache-Control": "max-age=0, no-cache" },
     });
-
     return finalizeJsonResponse({ ...params, response: resultResponse });
   }
 
@@ -353,9 +339,7 @@ async function finalizeJsonResponse(params: {
       response: params.response,
       payload,
       ttlSeconds: params.ttlSeconds,
-    }).catch((error) => {
-      console.warn("Failed to write external API cache", error);
-    });
+    }).catch((error) => console.warn("Failed to write external API cache", error));
   }
 
   const headers = new Headers(params.response.headers);
@@ -383,40 +367,50 @@ export async function fetchExternalApi(input: {
   const normalizedPath = normalizePath(input.path);
 
   if (!isAllowedExternalPath(normalizedPath)) {
-    return new Response(
-      JSON.stringify({ message: "Unsupported external API endpoint." }),
-      {
-        status: 404,
-        headers: { "content-type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ message: "Unsupported external API endpoint." }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
   }
 
   const apiSuffix = getApiSuffix(input.host || DEFAULT_PUBLIC_HOST);
   const endpoint = `${apiSuffix}${normalizedPath}`;
   const cachePolicy = getCachePolicy(normalizedPath, method);
-  const cacheKey = cachePolicy
-    ? buildCacheKey(method, endpoint, input.body)
-    : null;
+  const cacheKey = cachePolicy ? buildCacheKey(method, endpoint, input.body) : null;
 
+  let staleCache: Awaited<ReturnType<typeof readCache>> = null;
   if (cacheKey) {
-    const cached = await readUsableCache(cacheKey).catch((error) => {
+    staleCache = await readCache(cacheKey).catch((error) => {
       console.warn("Failed to read external API cache", error);
       return null;
     });
 
-    if (cached) {
-      return responseFromCache(cached);
+    if (staleCache && staleCache.expiresAt > new Date()) {
+      return responseFromCache(staleCache, "hit");
     }
   }
 
-  const response = await fetchFromMirror(endpoint, {
-    method,
-    body: input.body,
-    headers: input.headers,
-  });
-  const contentType = response.headers.get("content-type") ?? "";
+  let response: Response;
+  try {
+    response = await fetchFromMirror(endpoint, {
+      method,
+      body: input.body,
+      headers: input.headers,
+    });
+  } catch (error) {
+    if (staleCache) {
+      console.warn("Serving stale external API cache after all mirrors failed", error);
+      return responseFromCache(staleCache, "stale");
+    }
+    throw error;
+  }
 
+  if (isRetryableStatus(response.status) && staleCache) {
+    console.warn(`Serving stale external API cache after upstream status ${response.status}.`);
+    return responseFromCache(staleCache, "stale");
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     return finalizeJsonResponse({
       cacheKey,
