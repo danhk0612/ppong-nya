@@ -5,7 +5,10 @@ import {
   refreshPublicPlayer,
 } from "$lib/server/services/publicPlayerCache";
 import { runPublicPlayerCacheMaintenance } from "$lib/server/services/publicPlayerRetention";
-import { getPublicPlayerStatistics } from "$lib/server/services/publicPlayerStatistics";
+import {
+  getCachedPublicPlayerStatistics,
+  getPublicPlayerStatistics,
+} from "$lib/server/services/publicPlayerStatistics";
 import type { RequestHandler } from "./$types";
 
 function parseDate(value: string | null, fallback: Date) {
@@ -60,9 +63,14 @@ function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPl
   };
 }
 
+type StatisticsPayload = Awaited<ReturnType<typeof getPublicPlayerStatistics>> | {
+  metadata: null;
+  extendedStats: null;
+};
+
 function serializeState(
   state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
-  statistics: Awaited<ReturnType<typeof getPublicPlayerStatistics>>,
+  statistics: StatisticsPayload,
 ) {
   return {
     player: {
@@ -92,6 +100,23 @@ function errorResponse(reason: unknown) {
   return json({ message }, { status });
 }
 
+async function getStatisticsWithFallback(input: {
+  host: string;
+  state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>;
+}) {
+  try {
+    return await getPublicPlayerStatistics(input);
+  } catch (reason) {
+    console.warn("Serving player detail without fresh upstream statistics", reason);
+    return (
+      (await getCachedPublicPlayerStatistics(input.state)) ?? {
+        metadata: null,
+        extendedStats: null,
+      }
+    );
+  }
+}
+
 export const GET: RequestHandler = async (event) => {
   const playerId = event.params.id?.trim();
   if (!playerId || !/^\d+$/.test(playerId)) {
@@ -106,19 +131,26 @@ export const GET: RequestHandler = async (event) => {
       event.url.searchParams.get("refresh") !== "0" &&
       (!cached || !cached.rangeCovered || cached.stale);
 
-    const state = shouldRefresh
-      ? await refreshPublicPlayer({
+    let state = cached;
+    if (shouldRefresh) {
+      try {
+        state = await refreshPublicPlayer({
           host: event.url.host,
           playerId,
           ...range,
-        })
-      : cached;
+        });
+      } catch (reason) {
+        if (!cached) throw reason;
+        console.warn("Serving cached player detail after upstream refresh failed", reason);
+        state = cached;
+      }
+    }
 
     if (!state) {
       return json({ message: "플레이어 정보를 찾지 못했습니다." }, { status: 404 });
     }
 
-    const statistics = await getPublicPlayerStatistics({
+    const statistics = await getStatisticsWithFallback({
       host: event.url.host,
       state,
     });
