@@ -7,7 +7,7 @@ This file tracks implementation against `docs/public-player-cache-plan.md`.
 - [x] Plan documented
 - [x] Feature branch created: `feature/public-player-cache`
 - [x] Stage 1 SQL migration added for shared player cache tables
-- [ ] Stage 1 Prisma schema updated
+- [x] Stage 1 Prisma schema updated
 - [ ] Stage 1 migration/data-model verification
 - [ ] Stage 2 public player data service
 - [ ] Stage 3 range and table filtering
@@ -20,3 +20,5 @@ This file tracks implementation against `docs/public-player-cache-plan.md`.
 ## Stage 1 notes
 
 Existing membership/favorite tables remain intentionally untouched during the first schema stage. This allows current production data to stay readable while the public cache path is built and verified. Removal happens only after the migration path is proven.
+
+The shared schema now includes `CachedPlayer`, `CachedPlayerGameRecord`, `PlayerQueryCoverage`, and `PlayerStatisticsCache`, with a back-reference from `GameRecord`. A server-side cache service skeleton has also been added, but Stage 2 is not considered started until Stage 1 verification passes.
