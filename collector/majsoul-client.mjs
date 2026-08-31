@@ -45,6 +45,12 @@ class RpcCodec {
     this.wrapper = this.root.lookupType("lq.Wrapper");
     this.nextId = 1;
     this.pendingTypes = new Map();
+
+    const requestConnectionType = this.root.lookupType("lq.ReqRequestConnection");
+    if (!requestConnectionType.fields.platform) {
+      requestConnectionType.add(new protobuf.Field("platform", 6, "string"));
+      console.log("[collector] patched protobuf lq.ReqRequestConnection.platform field=6 type=string");
+    }
   }
 
   encode(methodName, payload) {
