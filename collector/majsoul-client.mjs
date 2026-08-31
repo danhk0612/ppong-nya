@@ -64,6 +64,12 @@ class RpcCodec {
   }
 }
 
+function splitOAuthCredential(value) {
+  const separator = value.lastIndexOf("-");
+  if (separator <= 0 || separator === value.length - 1) return null;
+  return { code: value.slice(0, separator), uid: value.slice(separator + 1) };
+}
+
 export class MajsoulClient {
   constructor({ baseUrl = process.env.MAJSOUL_URL_BASE || DEFAULT_BASE, accessToken, oauthType = 7, loginRegion = "en" }) {
     this.baseUrl = baseUrl;
@@ -95,13 +101,46 @@ export class MajsoulClient {
       this.pending.clear();
     });
     await this.rpc(".lq.Lobby.heatbeat", { no_operation_counter: 0 });
-    const check = await this.rpc(".lq.Lobby.oauth2Check", { type: this.oauthType, access_token: this.accessToken });
+
+    let accessToken = this.accessToken;
+    if (this.oauthType === 7) {
+      const credential = splitOAuthCredential(accessToken);
+      if (credential) {
+        const auth = await this.rpc(".lq.Lobby.oauth2Auth", {
+          type: this.oauthType,
+          code: credential.code,
+          uid: credential.uid,
+          client_version_string: this.clientVersionString,
+        });
+        if (!auth.access_token) throw new Error("Mahjong Soul oauth2Auth did not return an access token");
+        accessToken = auth.access_token;
+      }
+    }
+
+    let check = await this.rpc(".lq.Lobby.oauth2Check", { type: this.oauthType, access_token: accessToken });
+    if (!check.has_account) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      check = await this.rpc(".lq.Lobby.oauth2Check", { type: this.oauthType, access_token: accessToken });
+    }
     if (!check.has_account) throw new Error("Mahjong Soul access token has no account");
+
     const login = await this.rpc(".lq.Lobby.oauth2Login", {
       type: this.oauthType,
-      access_token: this.accessToken,
+      access_token: accessToken,
       reconnect: false,
-      device: { platform: "pc", hardware: "pc", os: "linux", os_version: "server", is_browser: false, software: "ppong-nya", sale_platform: "web" },
+      device: {
+        platform: "pc",
+        hardware: "pc",
+        os: "windows",
+        os_version: "win10",
+        is_browser: true,
+        software: "Chrome",
+        sale_platform: "web",
+        screen_width: 1920,
+        screen_height: 1080,
+        user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/150 Safari/537.36",
+        screen_type: 1,
+      },
       random_key: randomUUID(),
       client_version_string: this.clientVersionString,
       currency_platforms: [1, 2, 5, 6, 8, 10, 11],
