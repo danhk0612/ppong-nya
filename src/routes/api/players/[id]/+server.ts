@@ -1,5 +1,4 @@
 import { json } from "@sveltejs/kit";
-import { db } from "$lib/server/db";
 import {
   getDefaultPublicPlayerRange,
   getPublicPlayerState,
@@ -205,17 +204,6 @@ function errorResponse(reason: unknown) {
   return json({ message }, { status });
 }
 
-async function hasNativePlayerRecords(cachedPlayerId: string) {
-  return (
-    (await db.cachedPlayerGameRecord.count({
-      where: {
-        cachedPlayerId,
-        gameRecord: { source: NATIVE_SOURCE },
-      },
-    })) > 0
-  );
-}
-
 async function serveNativePlayer(event: Parameters<RequestHandler>[0]) {
   const playerId = event.params.id?.trim();
   if (!playerId || !/^\d+$/.test(playerId)) {
@@ -225,9 +213,9 @@ async function serveNativePlayer(event: Parameters<RequestHandler>[0]) {
   try {
     await runPublicPlayerCacheMaintenance();
     const state = await getPublicPlayerState({ playerId, ...parseRange(event.url) });
-    if (!state || !(await hasNativePlayerRecords(state.player.id))) {
+    if (!state) {
       return json(
-        { message: "아직 수집된 4인전 기록이 없는 플레이어입니다." },
+        { message: "플레이어를 찾을 수 없습니다." },
         { status: 404 },
       );
     }

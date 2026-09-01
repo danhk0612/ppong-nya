@@ -3,6 +3,7 @@ import { MajsoulClient } from "./majsoul-client.mjs";
 import { materializeCollectedGame } from "./materialize.mjs";
 import { FOUR_PLAYER_RANKED_MODES, MODE_IDS } from "./modes.mjs";
 import { calculateRoundStats } from "./record-stats.mjs";
+import { startNativeSearchServer } from "./search-server.mjs";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const MAJSOUL_UID = process.env.MAJSOUL_UID;
@@ -169,9 +170,11 @@ async function run() {
     resourceVersion: process.env.MAJSOUL_RESOURCE_VERSION,
     productVersion: process.env.MAJSOUL_PRODUCT_VERSION,
   });
+  let searchServer = null;
   try {
     const login = await client.connect();
     console.log(`[collector] connected account=${login.account_id} oauthType=${OAUTH_TYPE}`);
+    searchServer = startNativeSearchServer(client);
     await heartbeat("connected");
     do {
       const started = Date.now();
@@ -188,6 +191,7 @@ async function run() {
       await sleep(Math.max(0, POLL_INTERVAL_MS - (Date.now() - started)));
     } while (!stopping);
   } finally {
+    if (searchServer) await new Promise((resolve) => searchServer.close(resolve));
     client.close();
   }
 }

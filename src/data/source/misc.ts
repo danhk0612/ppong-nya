@@ -30,10 +30,15 @@ export async function searchPlayer(
   if (!prefix) {
     return [];
   }
-  const result = await apiGet<PlayerSearchResult[]>(
-    `search_player/${encodeURIComponent(prefix)}?limit=${limit}&tag=all`,
-  );
-  return result || [];
+  const params = new URLSearchParams({
+    q: prefix,
+    limit: String(limit),
+  });
+  const response = await fetch(`/api/players/search?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`플레이어 검색에 실패했습니다. (${response.status})`);
+  }
+  return (await response.json()) as PlayerSearchResult[];
 }
 
 export async function getExtendedStats(
