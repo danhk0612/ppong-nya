@@ -2,6 +2,7 @@ import mysql from "mysql2/promise";
 import { MajsoulClient } from "./majsoul-client.mjs";
 import { materializeCollectedGame } from "./materialize.mjs";
 import { FOUR_PLAYER_RANKED_MODES, MODE_IDS } from "./modes.mjs";
+import { calculateRoundStats } from "./record-stats.mjs";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const MAJSOUL_UID = process.env.MAJSOUL_UID;
@@ -123,6 +124,8 @@ async function processPendingRecords(client) {
         await markRetry(uuid, "record payload is empty", 30);
         continue;
       }
+      const decoded = client.decodeGameRecordData(recordData);
+      const roundStatsBySeat = calculateRoundStats(decoded.records);
       await db.execute(
         `UPDATE collector_games
             SET status='COLLECTED', mode_id=?, start_time=COALESCE(?, start_time), end_time=?,
@@ -132,8 +135,8 @@ async function processPendingRecords(client) {
         [modeId, asDate(head.start_time), asDate(head.end_time), JSON.stringify(head), recordData, uuid],
       );
       console.log(`[collector] collected ${uuid} mode=${modeId} bytes=${recordData.length}`);
-      const materialized = await materializeCollectedGame(db, head);
-      console.log(`[collector] materialized ${uuid} gameRecord=${materialized.gameRecordId} players=${materialized.players}`);
+      const materialized = await materializeCollectedGame(db, head, roundStatsBySeat);
+      console.log(`[collector] materialized ${uuid} gameRecord=${materialized.gameRecordId} players=${materialized.players} rounds=${roundStatsBySeat[0]?.rounds ?? 0}`);
     } catch (error) {
       console.warn(`[collector] failed ${uuid}: ${compactError(error)}`);
       await markRetry(uuid, error, 15);
