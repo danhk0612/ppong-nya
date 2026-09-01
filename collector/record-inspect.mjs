@@ -11,46 +11,11 @@ function compact(value) {
   const result = {};
   for (const [key, item] of Object.entries(value)) {
     if (Array.isArray(item)) result[key] = `[${item.length}]`;
+    else if (Buffer.isBuffer(item) || item instanceof Uint8Array) result[key] = `<bytes:${item.length}>`;
     else if (item && typeof item === "object") result[key] = "{...}";
     else result[key] = item;
   }
   return result;
-}
-
-function decodeStoredRecord(client, recordData) {
-  const codec = client.codec;
-  if (!codec?.root || !codec?.wrapper) throw new Error("Mahjong Soul protobuf codec is not initialized");
-
-  const outer = codec.wrapper.decode(Buffer.from(recordData));
-  const outerName = String(outer.name || "");
-  if (outerName !== ".lq.GameDetailRecords") {
-    throw new Error(`Unexpected record wrapper ${outerName || "(empty)"}`);
-  }
-
-  const detailType = codec.root.lookupType("lq.GameDetailRecords");
-  const details = detailType.decode(outer.data);
-  const recordBuffers = Array.isArray(details.records) ? details.records : [];
-  const records = [];
-
-  for (const bytes of recordBuffers) {
-    const wrapper = codec.wrapper.decode(bytes);
-    const name = String(wrapper.name || "");
-    let payload = null;
-    try {
-      const type = codec.root.lookupType(name.replace(/^\./, ""));
-      payload = type.toObject(type.decode(wrapper.data), {
-        longs: Number,
-        enums: String,
-        bytes: Buffer,
-        defaults: false,
-      });
-    } catch (error) {
-      payload = { decodeError: String(error?.message || error) };
-    }
-    records.push({ name, payload });
-  }
-
-  return { name: outerName, records };
 }
 
 async function main() {
@@ -66,7 +31,6 @@ async function main() {
   const client = new MajsoulClient({
     uid: process.env.MAJSOUL_UID,
     token: process.env.MAJSOUL_TOKEN,
-    deviceId: process.env.MAJSOUL_DEVICE_ID,
     accessToken: process.env.MAJSOUL_ACCESS_TOKEN,
     oauthType: process.env.MAJSOUL_OAUTH_TYPE,
     baseUrl: process.env.MAJSOUL_URL_BASE,
@@ -78,7 +42,7 @@ async function main() {
 
   try {
     await client.connect();
-    const decoded = decodeStoredRecord(client, rows[0].recordData);
+    const decoded = client.decodeGameRecordData(rows[0].recordData);
     const counts = new Map();
     for (const record of decoded.records) {
       counts.set(record.name, (counts.get(record.name) ?? 0) + 1);
@@ -89,7 +53,16 @@ async function main() {
       console.log(`[inspect] ${name} ${count}`);
     }
 
-    for (const target of [".lq.RecordNewRound", ".lq.RecordDiscardTile", ".lq.RecordChiPengGang", ".lq.RecordHule", ".lq.RecordNoTile", ".lq.RecordLiuJu"]) {
+    for (const target of [
+      ".lq.RecordNewRound",
+      ".lq.RecordDiscardTile",
+      ".lq.RecordDealTile",
+      ".lq.RecordChiPengGang",
+      ".lq.RecordAnGangAddGang",
+      ".lq.RecordHule",
+      ".lq.RecordNoTile",
+      ".lq.RecordLiuJu",
+    ]) {
       const record = decoded.records.find((item) => item.name === target);
       if (record) console.log(`[inspect] sample ${target} ${JSON.stringify(compact(record.payload))}`);
     }
