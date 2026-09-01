@@ -29,47 +29,74 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
-async function fetchPlayerById(client, accountId) {
-  const result = await client.searchAccountById(Number(accountId));
-  if (result?.error?.code) {
-    console.warn(`[collector] native searchAccountById account=${accountId} error=${result.error.code}`);
-  }
-  return normalizePlayer(result?.player);
+function errorCode(result) {
+  return Number(result?.error?.code || 0);
 }
 
-async function searchPlayers(client, query, limit) {
-  const accountIds = [];
-  const addId = (value) => {
-    const id = Number(value || 0);
-    if (Number.isInteger(id) && id > 0 && !accountIds.includes(id)) accountIds.push(id);
-  };
+async function fetchPlayerById(client, accountId) {
+  const searchResult = await client.searchAccountById(Number(accountId));
+  const searchPlayer = normalizePlayer(searchResult?.player);
+  console.log(
+    `[collector] native rpc searchAccountById account=${accountId} error=${errorCode(searchResult)} player=${searchPlayer ? 1 : 0}`,
+  );
+  if (searchPlayer) return searchPlayer;
 
-  if (/^\d+$/.test(query)) {
-    const eidResult = await client.searchAccountByEid(Number(query));
-    if (eidResult?.error?.code) {
-      console.warn(`[collector] native searchAccountByEid eid=${query} error=${eidResult.error.code}`);
-    }
-    addId(eidResult?.account_id);
-  } else {
-    const matched = await client.searchAccountByPattern(query);
-    if (matched?.error?.code) {
-      console.warn(`[collector] native searchAccountByPattern query=${JSON.stringify(query)} error=${matched.error.code}`);
-    }
-    if (Array.isArray(matched?.match_accounts)) {
-      for (const value of matched.match_accounts) {
-        addId(value);
-        if (accountIds.length >= limit) break;
-      }
-    }
+  const infoResult = await client.fetchAccountInfo(Number(accountId));
+  const infoPlayer = normalizePlayer(infoResult?.account);
+  console.log(
+    `[collector] native rpc fetchAccountInfo account=${accountId} error=${errorCode(infoResult)} account=${infoPlayer ? 1 : 0}`,
+  );
+  return infoPlayer;
+}
+
+async function searchNumericPlayer(client, query) {
+  const numericId = Number(query);
+
+  // Some clients expose an account_id directly while user-facing IDs may be EIDs.
+  // Probe the direct account lookup first, then resolve EID if needed. The logs only
+  // expose RPC status and presence flags, never private account fields.
+  const directPlayer = await fetchPlayerById(client, numericId);
+  if (directPlayer) {
+    console.log(`[collector] native numeric search query=${query} route=direct-account results=1`);
+    return [directPlayer];
   }
 
-  if (!accountIds.length) {
-    console.log(`[collector] native search query=${JSON.stringify(query)} resolved=0 results=0`);
+  const eidResult = await client.searchAccountByEid(numericId);
+  const resolvedId = Number(eidResult?.account_id || 0);
+  console.log(
+    `[collector] native rpc searchAccountByEid eid=${query} error=${errorCode(eidResult)} resolved=${resolvedId > 0 ? 1 : 0}`,
+  );
+  if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
+    console.log(`[collector] native numeric search query=${query} route=eid results=0`);
     return [];
   }
 
+  const resolvedPlayer = await fetchPlayerById(client, resolvedId);
+  console.log(`[collector] native numeric search query=${query} route=eid results=${resolvedPlayer ? 1 : 0}`);
+  return resolvedPlayer ? [resolvedPlayer] : [];
+}
+
+async function searchPlayers(client, query, limit) {
+  if (/^\d+$/.test(query)) {
+    return searchNumericPlayer(client, query);
+  }
+
+  const matched = await client.searchAccountByPattern(query);
+  console.log(
+    `[collector] native rpc searchAccountByPattern query=${JSON.stringify(query)} error=${errorCode(matched)} matches=${Array.isArray(matched?.match_accounts) ? matched.match_accounts.length : 0}`,
+  );
+
+  const accountIds = [];
+  if (Array.isArray(matched?.match_accounts)) {
+    for (const value of matched.match_accounts) {
+      const id = Number(value || 0);
+      if (Number.isInteger(id) && id > 0 && !accountIds.includes(id)) accountIds.push(id);
+      if (accountIds.length >= limit) break;
+    }
+  }
+
   const players = [];
-  for (const accountId of accountIds.slice(0, limit)) {
+  for (const accountId of accountIds) {
     const player = await fetchPlayerById(client, accountId);
     if (player) players.push(player);
   }
@@ -77,7 +104,7 @@ async function searchPlayers(client, query, limit) {
   console.log(
     `[collector] native search query=${JSON.stringify(query)} resolved=${accountIds.length} results=${players.length}`,
   );
-  return players;
+  return players.slice(0, limit);
 }
 
 export function startNativeSearchServer(client) {
