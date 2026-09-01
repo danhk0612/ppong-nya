@@ -13,6 +13,19 @@ import {
 import type { RequestHandler } from "./$types";
 
 const NATIVE_SOURCE = "majsoul-native";
+const ROUND_STAT_KEYS = [
+  "rounds",
+  "wins",
+  "tsumoWins",
+  "dealIns",
+  "riichiRounds",
+  "openRounds",
+  "draws",
+  "winPointSum",
+  "dealInPointSum",
+] as const;
+
+type RoundStats = Record<(typeof ROUND_STAT_KEYS)[number], number>;
 
 function parseDate(value: string | null, fallback: Date) {
   if (!value) return fallback;
@@ -51,6 +64,18 @@ function readNumericMetadata(metadata: unknown, key: string) {
 
 function readPlayerLevel(metadata: unknown) {
   return readNumericMetadata(metadata, "level") ?? readNumericMetadata(metadata, "levelId") ?? 0;
+}
+
+function readRoundStats(metadata: unknown): Partial<RoundStats> | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const raw = (metadata as Record<string, unknown>).roundStats;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const result: Partial<RoundStats> = {};
+  for (const key of ROUND_STAT_KEYS) {
+    const value = Number((raw as Record<string, unknown>)[key]);
+    if (Number.isFinite(value)) result[key] = value;
+  }
+  return result;
 }
 
 function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>["records"][number]) {
@@ -97,10 +122,21 @@ function getNativeStatistics(
 
   const rankCounts = [0, 0, 0, 0];
   const rankScoreSums = [0, 0, 0, 0];
+  const roundTotals = Object.fromEntries(ROUND_STAT_KEYS.map((key) => [key, 0])) as RoundStats;
+  let roundStatsGames = 0;
+
   for (const { player } of entries) {
     const index = Math.max(0, Math.min(3, player.placement - 1));
     rankCounts[index] += 1;
     rankScoreSums[index] += player.score;
+
+    const roundStats = readRoundStats(player.metadata);
+    if (roundStats) {
+      roundStatsGames += 1;
+      for (const key of ROUND_STAT_KEYS) {
+        roundTotals[key] += Number(roundStats[key] ?? 0);
+      }
+    }
   }
 
   const count = entries.length;
@@ -109,6 +145,21 @@ function getNativeStatistics(
   const latestLevelScore = readNumericMetadata(latest.metadata, "levelScore") ?? 0;
   const latestDelta = latest.ratingDelta == null ? 0 : Number(latest.ratingDelta);
   const maxLevelId = state.player.maxLevel ?? latestLevelId;
+  const rounds = roundTotals.rounds;
+
+  const extendedStats = rounds > 0 && roundStatsGames > 0
+    ? {
+        count: rounds,
+        和牌率: roundTotals.wins / rounds,
+        自摸率: roundTotals.wins ? roundTotals.tsumoWins / roundTotals.wins : 0,
+        放铳率: roundTotals.dealIns / rounds,
+        副露率: roundTotals.openRounds / rounds,
+        立直率: roundTotals.riichiRounds / rounds,
+        平均打点: roundTotals.wins ? roundTotals.winPointSum / roundTotals.wins : 0,
+        平均铳点: roundTotals.dealIns ? roundTotals.dealInPointSum / roundTotals.dealIns : 0,
+        流局率: roundTotals.draws / rounds,
+      }
+    : null;
 
   return {
     metadata: {
@@ -131,7 +182,7 @@ function getNativeStatistics(
         entries.filter(({ player }) => player.score < 25000).length / count,
       played_modes: [...new Set(entries.map(({ gameRecord }) => gameRecord.externalModeId).filter(Boolean))],
     },
-    extendedStats: null,
+    extendedStats,
   };
 }
 
