@@ -38,29 +38,33 @@ async function fetchPlayerById(client, accountId) {
 }
 
 async function searchPlayers(client, query, limit) {
-  const matched = await client.searchAccountByPattern(query);
-  if (matched?.error?.code) {
-    console.warn(`[collector] native searchAccountByPattern query=${JSON.stringify(query)} error=${matched.error.code}`);
-  }
-
   const accountIds = [];
   const addId = (value) => {
     const id = Number(value || 0);
     if (Number.isInteger(id) && id > 0 && !accountIds.includes(id)) accountIds.push(id);
   };
 
-  // For an exact public-id match, Mahjong Soul returns the decoded internal
-  // account id in decode_id. Pattern matches are already internal account ids.
-  addId(matched?.decode_id);
-  if (Array.isArray(matched?.match_accounts)) {
-    for (const value of matched.match_accounts) {
-      addId(value);
-      if (accountIds.length >= limit) break;
+  if (/^\d+$/.test(query)) {
+    const eidResult = await client.searchAccountByEid(Number(query));
+    if (eidResult?.error?.code) {
+      console.warn(`[collector] native searchAccountByEid eid=${query} error=${eidResult.error.code}`);
+    }
+    addId(eidResult?.account_id);
+  } else {
+    const matched = await client.searchAccountByPattern(query);
+    if (matched?.error?.code) {
+      console.warn(`[collector] native searchAccountByPattern query=${JSON.stringify(query)} error=${matched.error.code}`);
+    }
+    if (Array.isArray(matched?.match_accounts)) {
+      for (const value of matched.match_accounts) {
+        addId(value);
+        if (accountIds.length >= limit) break;
+      }
     }
   }
 
   if (!accountIds.length) {
-    console.log(`[collector] native search query=${JSON.stringify(query)} decoded=0 results=0`);
+    console.log(`[collector] native search query=${JSON.stringify(query)} resolved=0 results=0`);
     return [];
   }
 
@@ -71,7 +75,7 @@ async function searchPlayers(client, query, limit) {
   }
 
   console.log(
-    `[collector] native search query=${JSON.stringify(query)} decoded=${accountIds.length} results=${players.length}`,
+    `[collector] native search query=${JSON.stringify(query)} resolved=${accountIds.length} results=${players.length}`,
   );
   return players;
 }
