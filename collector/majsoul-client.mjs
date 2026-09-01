@@ -89,7 +89,7 @@ export class MajsoulClient {
     uid,
     token,
     accessToken,
-    oauthType = uid && token ? 22 : 7,
+    oauthType,
     loginRegion = "en",
     routeId = process.env.MAJSOUL_ROUTE_ID,
     resourceVersion = process.env.MAJSOUL_RESOURCE_VERSION,
@@ -100,8 +100,8 @@ export class MajsoulClient {
     this.uid = uid;
     this.token = token;
     this.accessToken = accessToken;
-    this.oauthType = Number(oauthType);
     this.loginRegion = loginRegion;
+    this.oauthType = Number(oauthType ?? (uid && token ? (loginRegion === "kr" ? 23 : 22) : 7));
     this.routeId = routeId || `${loginRegion}-2`;
     this.resourceVersion = resourceVersion;
     this.productVersion = productVersion;
@@ -110,18 +110,18 @@ export class MajsoulClient {
   }
 
   async resolveLoginAccessToken() {
-    if (this.oauthType === 22) {
+    if (this.oauthType === 22 || this.oauthType === 23) {
       if (!this.uid || !this.token) {
-        throw new Error("MAJSOUL_UID and MAJSOUL_TOKEN are required for Yostar OAuth type 22");
+        throw new Error(`MAJSOUL_UID and MAJSOUL_TOKEN are required for Yostar OAuth type ${this.oauthType}`);
       }
       const auth = await this.rpc(".lq.Lobby.oauth2Auth", {
-        type: 22,
+        type: this.oauthType,
         code: this.token,
         uid: this.uid,
         client_version_string: this.clientVersionString,
       });
       if (!auth.access_token) {
-        throw new Error(`Mahjong Soul oauth2Auth(type=22) failed version=${this.clientVersionString} gateway=${this.gateway}: ${JSON.stringify(auth)}`);
+        throw new Error(`Mahjong Soul oauth2Auth(type=${this.oauthType}) failed version=${this.clientVersionString} gateway=${this.gateway}: ${JSON.stringify(auth)}`);
       }
       return auth.access_token;
     }
@@ -154,7 +154,7 @@ export class MajsoulClient {
     const legacyGateway = runtime.gateway.replace(/^http/, "ws").replace(/\/$/, "") + "/gateway";
     const gateway = this.lobbyEndpoint || UNITY_LOBBY_ENDPOINTS[this.loginRegion] || legacyGateway;
     this.gateway = gateway;
-    console.log(`[collector] connecting gateway=${gateway} region=${this.loginRegion} route=${this.routeId}`);
+    console.log(`[collector] connecting gateway=${gateway} region=${this.loginRegion} route=${this.routeId} oauthType=${this.oauthType}`);
     this.ws = new WebSocket(gateway, { headers: { Origin: this.baseUrl.replace(/\/$/, ""), "User-Agent": "Mozilla/5.0 ppong-nya-collector" } });
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("WebSocket connect timeout")), 15000);
