@@ -29,25 +29,40 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
-async function searchPlayers(client, query, limit) {
-  if (/^\d+$/.test(query)) {
-    const result = await client.searchAccountById(Number(query));
-    const player = normalizePlayer(result.player);
-    return player ? [player] : [];
+async function fetchPlayerById(client, accountId) {
+  const result = await client.searchAccountById(Number(accountId));
+  const player = normalizePlayer(result?.player);
+  if (!player && result?.error?.code) {
+    console.warn(`[collector] native searchAccountById account=${accountId} error=${result.error.code}`);
   }
+  return player;
+}
 
+async function searchByPattern(client, query, limit) {
   const matched = await client.searchAccountByPattern(query);
-  const accountIds = Array.isArray(matched.match_accounts)
+  if (matched?.error?.code) {
+    console.warn(`[collector] native searchAccountByPattern query=${JSON.stringify(query)} error=${matched.error.code}`);
+  }
+  const accountIds = Array.isArray(matched?.match_accounts)
     ? matched.match_accounts.slice(0, limit)
     : [];
 
   const players = [];
   for (const accountId of accountIds) {
-    const result = await client.searchAccountById(Number(accountId));
-    const player = normalizePlayer(result.player);
+    const player = await fetchPlayerById(client, accountId);
     if (player) players.push(player);
   }
   return players;
+}
+
+async function searchPlayers(client, query, limit) {
+  if (/^\d+$/.test(query)) {
+    const player = await fetchPlayerById(client, query);
+    if (player) return [player];
+    return searchByPattern(client, query, limit);
+  }
+
+  return searchByPattern(client, query, limit);
 }
 
 export function startNativeSearchServer(client) {
@@ -70,6 +85,7 @@ export function startNativeSearchServer(client) {
       const requestedLimit = Number(url.searchParams.get("limit") || MAX_RESULTS);
       const limit = Math.max(1, Math.min(MAX_RESULTS, Number.isFinite(requestedLimit) ? requestedLimit : MAX_RESULTS));
       const players = await searchPlayers(client, query, limit);
+      console.log(`[collector] native search query=${JSON.stringify(query)} results=${players.length}`);
       sendJson(response, 200, players.slice(0, limit));
     } catch (error) {
       console.warn(`[collector] native search failed: ${String(error?.message || error)}`);
