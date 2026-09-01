@@ -1,4 +1,5 @@
 import { json } from "@sveltejs/kit";
+import { db } from "$lib/server/db";
 import {
   getDefaultPublicPlayerRange,
   getPublicPlayerState,
@@ -10,6 +11,21 @@ import {
   getPublicPlayerStatistics,
 } from "$lib/server/services/publicPlayerStatistics";
 import type { RequestHandler } from "./$types";
+
+const NATIVE_SOURCE = "majsoul-native";
+const ROUND_STAT_KEYS = [
+  "rounds",
+  "wins",
+  "tsumoWins",
+  "dealIns",
+  "riichiRounds",
+  "openRounds",
+  "draws",
+  "winPointSum",
+  "dealInPointSum",
+] as const;
+
+type RoundStats = Record<(typeof ROUND_STAT_KEYS)[number], number>;
 
 function parseDate(value: string | null, fallback: Date) {
   if (!value) return fallback;
@@ -39,9 +55,34 @@ function parseRange(url: URL) {
   };
 }
 
+function readNumericMetadata(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  if (!(key in metadata)) return null;
+  const value = Number((metadata as Record<string, unknown>)[key]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function readPlayerLevel(metadata: unknown) {
+  return readNumericMetadata(metadata, "level") ?? readNumericMetadata(metadata, "levelId") ?? 0;
+}
+
+function readRoundStats(metadata: unknown): Partial<RoundStats> | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const raw = (metadata as Record<string, unknown>).roundStats;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const result: Partial<RoundStats> = {};
+  for (const key of ROUND_STAT_KEYS) {
+    const value = Number((raw as Record<string, unknown>)[key]);
+    if (Number.isFinite(value)) result[key] = value;
+  }
+  return result;
+}
+
 function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>["records"][number]) {
   const { gameRecord } = link;
-  if (gameRecord.rawPayload) return gameRecord.rawPayload;
+  if (gameRecord.source !== NATIVE_SOURCE && gameRecord.rawPayload) {
+    return gameRecord.rawPayload;
+  }
 
   return {
     modeId: gameRecord.externalModeId,
@@ -51,22 +92,99 @@ function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPl
     players: gameRecord.players.map((player) => ({
       accountId: Number(player.accountId),
       nickname: player.nickname,
-      level:
-        player.metadata &&
-        typeof player.metadata === "object" &&
-        !Array.isArray(player.metadata) &&
-        "level" in player.metadata
-          ? Number(player.metadata.level)
-          : 0,
+      level: readPlayerLevel(player.metadata),
       score: player.score,
+      gradingScore:
+        player.ratingDelta == null ? undefined : Number(player.ratingDelta),
     })),
   };
 }
 
 type StatisticsPayload = Awaited<ReturnType<typeof getPublicPlayerStatistics>> | {
-  metadata: null;
-  extendedStats: null;
+  metadata: unknown;
+  extendedStats: unknown;
 };
+
+function getNativeStatistics(
+  state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
+) {
+  const playerId = state.player.playerId;
+  const entries = state.records
+    .map(({ gameRecord }) => {
+      const player = gameRecord.players.find((item) => item.accountId === playerId);
+      return player ? { gameRecord, player } : null;
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  if (!entries.length) {
+    return { metadata: null, extendedStats: null };
+  }
+
+  const rankCounts = [0, 0, 0, 0];
+  const rankScoreSums = [0, 0, 0, 0];
+  const roundTotals = Object.fromEntries(ROUND_STAT_KEYS.map((key) => [key, 0])) as RoundStats;
+  let roundStatsGames = 0;
+
+  for (const { player } of entries) {
+    const index = Math.max(0, Math.min(3, player.placement - 1));
+    rankCounts[index] += 1;
+    rankScoreSums[index] += player.score;
+
+    const roundStats = readRoundStats(player.metadata);
+    if (roundStats) {
+      roundStatsGames += 1;
+      for (const key of ROUND_STAT_KEYS) {
+        roundTotals[key] += Number(roundStats[key] ?? 0);
+      }
+    }
+  }
+
+  const count = entries.length;
+  const latest = entries[0].player;
+  const latestLevelId = readNumericMetadata(latest.metadata, "levelId") ?? state.player.level ?? 10101;
+  const latestLevelScore = readNumericMetadata(latest.metadata, "levelScore") ?? 0;
+  const latestDelta = latest.ratingDelta == null ? 0 : Number(latest.ratingDelta);
+  const maxLevelId = state.player.maxLevel ?? latestLevelId;
+  const rounds = roundTotals.rounds;
+
+  const extendedStats = rounds > 0 && roundStatsGames > 0
+    ? {
+        count: rounds,
+        和牌率: roundTotals.wins / rounds,
+        自摸率: roundTotals.wins ? roundTotals.tsumoWins / roundTotals.wins : 0,
+        放铳率: roundTotals.dealIns / rounds,
+        副露率: roundTotals.openRounds / rounds,
+        立直率: roundTotals.riichiRounds / rounds,
+        平均打点: roundTotals.wins ? roundTotals.winPointSum / roundTotals.wins : 0,
+        平均铳点: roundTotals.dealIns ? roundTotals.dealInPointSum / roundTotals.dealIns : 0,
+        流局率: roundTotals.draws / rounds,
+      }
+    : null;
+
+  return {
+    metadata: {
+      id: Number(playerId),
+      nickname: state.player.nickname,
+      count,
+      level: { id: latestLevelId, score: latestLevelScore, delta: latestDelta },
+      max_level: {
+        id: maxLevelId,
+        score: maxLevelId === latestLevelId ? latestLevelScore : 0,
+        delta: maxLevelId === latestLevelId ? latestDelta : 0,
+      },
+      rank_rates: rankCounts.map((value) => value / count),
+      avg_rank:
+        rankCounts.reduce((sum, value, index) => sum + value * (index + 1), 0) / count,
+      rank_avg_score: rankCounts.map((value, index) =>
+        value ? rankScoreSums[index] / value : 0,
+      ),
+      negative_rate:
+        entries.filter(({ player }) => player.score < 25000).length / count,
+      played_modes: [...new Set(entries.map(({ gameRecord }) => gameRecord.externalModeId).filter(Boolean))],
+    },
+    extendedStats,
+  };
+}
 
 function serializeState(
   state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
@@ -100,10 +218,24 @@ function errorResponse(reason: unknown) {
   return json({ message }, { status });
 }
 
+async function hasNativePlayerRecords(cachedPlayerId: string) {
+  return (
+    (await db.cachedPlayerGameRecord.count({
+      where: {
+        cachedPlayerId,
+        gameRecord: { source: NATIVE_SOURCE },
+      },
+    })) > 0
+  );
+}
+
 async function getStatisticsWithFallback(input: {
   host: string;
   state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>;
+  native: boolean;
 }) {
+  if (input.native) return getNativeStatistics(input.state);
+
   try {
     return await getPublicPlayerStatistics(input);
   } catch (reason) {
@@ -127,7 +259,9 @@ export const GET: RequestHandler = async (event) => {
     await runPublicPlayerCacheMaintenance();
     const range = parseRange(event.url);
     const cached = await getPublicPlayerState({ playerId, ...range });
+    const native = cached ? await hasNativePlayerRecords(cached.player.id) : false;
     const shouldRefresh =
+      !native &&
       event.url.searchParams.get("refresh") !== "0" &&
       (!cached || !cached.rangeCovered || cached.stale);
 
@@ -153,6 +287,7 @@ export const GET: RequestHandler = async (event) => {
     const statistics = await getStatisticsWithFallback({
       host: event.url.host,
       state,
+      native,
     });
     return json(serializeState(state, statistics));
   } catch (reason) {
@@ -169,6 +304,13 @@ export const POST: RequestHandler = async (event) => {
   try {
     await runPublicPlayerCacheMaintenance();
     const range = parseRange(event.url);
+    const cached = await getPublicPlayerState({ playerId, ...range });
+    const native = cached ? await hasNativePlayerRecords(cached.player.id) : false;
+
+    if (cached && native) {
+      return json(serializeState(cached, getNativeStatistics(cached)));
+    }
+
     const state = await refreshPublicPlayer({
       host: event.url.host,
       playerId,

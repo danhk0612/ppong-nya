@@ -75,6 +75,47 @@ class RpcCodec {
     const wrapper = this.wrapper.decode(bytes.subarray(3));
     return { id, payload: responseType.toObject(responseType.decode(wrapper.data), { longs: String }) };
   }
+
+  decodeGameRecordData(buffer) {
+    const outer = this.wrapper.decode(Buffer.from(buffer));
+    if (!outer?.data?.length) throw new Error("GameDetailRecords wrapper is missing data");
+
+    const detailType = this.root.lookupType("lq.GameDetailRecords");
+    const detail = detailType.toObject(detailType.decode(outer.data), {
+      defaults: false,
+      enums: String,
+      longs: Number,
+      bytes: Buffer,
+    });
+
+    const parseWrappedRecord = (data) => {
+      if (!data?.length) return null;
+      const wrapped = this.wrapper.decode(data);
+      if (!wrapped?.name || !wrapped?.data?.length) return null;
+      const messageType = this.root.lookupType(wrapped.name);
+      return {
+        name: wrapped.name,
+        payload: messageType.toObject(messageType.decode(wrapped.data), {
+          defaults: false,
+          enums: String,
+          longs: Number,
+          bytes: Buffer,
+        }),
+      };
+    };
+
+    const oldRecords = (detail.records ?? []).map(parseWrappedRecord).filter(Boolean);
+    const actionRecords = (detail.actions ?? [])
+      .filter((action) => Number(action.type) === 1 && action.result?.length)
+      .map((action) => parseWrappedRecord(action.result))
+      .filter(Boolean);
+
+    let records = oldRecords;
+    if (!oldRecords.length) records = actionRecords;
+    else if (actionRecords.length > oldRecords.length) records = actionRecords;
+
+    return { name: outer.name || ".lq.GameDetailRecords", records };
+  }
 }
 
 function splitOAuthCredential(value) {
@@ -257,6 +298,11 @@ export class MajsoulClient {
 
   fetchGameRecord(uuid) {
     return this.rpc(".lq.Lobby.fetchGameRecord", { game_uuid: uuid, client_version_string: this.clientVersionString });
+  }
+
+  decodeGameRecordData(buffer) {
+    if (!this.codec) throw new Error("Mahjong Soul client is not connected");
+    return this.codec.decodeGameRecordData(buffer);
   }
 
   close() {

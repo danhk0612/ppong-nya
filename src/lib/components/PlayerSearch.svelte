@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
-  import { searchPlayer, type PlayerSearchResult } from "../../data/source/misc";
+  import type { PlayerSearchResult } from "../../data/source/misc";
   import { Level, LevelWithDelta } from "../../data/types/level";
   import { getAccountZone, getAccountZoneTag } from "../../data/types/zone";
 
@@ -26,27 +26,31 @@
     );
   }
 
+  async function searchLocalPlayers(value: string) {
+    const response = await fetch(
+      `/api/players/search?q=${encodeURIComponent(value)}&limit=20`,
+    );
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !Array.isArray(payload)) {
+      throw new Error("플레이어 검색을 처리하지 못했습니다.");
+    }
+    return payload as PlayerSearchResult[];
+  }
+
   async function runSearch(value: string) {
     requestedQuery = value;
     errorMessage = "";
-
-    if (/^\d+$/.test(value)) {
-      results = [];
-      loading = false;
-      return;
-    }
-
     loading = true;
+
     try {
-      const players = (await searchPlayer(value, 20)).filter(
+      const players = (await searchLocalPlayers(value)).filter(
         (player) => new Level(player.level.id).getNumPlayerId() === 1,
       );
       if (requestedQuery === value) results = players;
     } catch {
       if (requestedQuery === value) {
         results = [];
-        errorMessage =
-          "플레이어 검색 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        errorMessage = "저장된 플레이어를 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.";
       }
     } finally {
       if (requestedQuery === value) loading = false;
@@ -68,37 +72,37 @@
     }
 
     loading = true;
-    debounceToken = setTimeout(() => void runSearch(normalizedQuery), 500);
+    debounceToken = setTimeout(() => void runSearch(normalizedQuery), 300);
   }
 
   async function openPlayer(player: PlayerSearchResult) {
-    try {
-      await fetch(`/api/players/${player.id}/seed`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          nickname: player.nickname.trim() || player.nickname,
-          level: player.level.id,
-          latestTimestamp: player.latest_timestamp,
-        }),
-      });
-    } catch {
-      // Navigation should still continue. The detail API can retry upstream itself.
-    }
-
     await goto(`/player/${player.id}`);
   }
 
-  function openDirect() {
+  async function openDirect() {
     const value = query.trim();
     if (!value) return;
-    goto(`/player/${encodeURIComponent(value)}`);
+
+    if (/^\d+$/.test(value)) {
+      await goto(`/player/${encodeURIComponent(value)}`);
+      return;
+    }
+
+    const exact = results.find(
+      (player) => normalizedName(player.nickname) === normalizedName(value),
+    );
+    if (exact) {
+      await openPlayer(exact);
+      return;
+    }
+
+    await runSearch(normalizedName(value));
   }
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Enter") {
       event.preventDefault();
-      openDirect();
+      void openDirect();
     }
   }
 
@@ -139,32 +143,28 @@
       class="min-h-14 shrink-0 rounded-3xl bg-brand-500 px-5 text-sm font-black text-white shadow-brand transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
       type="button"
       disabled={!query.trim()}
-      onclick={openDirect}
+      onclick={() => void openDirect()}
     >
       검색
     </button>
   </div>
 
   <p id="player-search-help" class="mt-2 px-1 text-xs leading-5 text-ink-500">
-    닉네임으로 검색하거나 플레이어 ID를 직접 입력할 수 있습니다.
+    수집된 4인전 플레이어를 닉네임 또는 플레이어 ID로 검색합니다.
   </p>
 
-  {#if query.trim() && !/^\d+$/.test(query.trim())}
+  {#if query.trim()}
     <div
       id="player-search-results"
       class="absolute z-30 mt-2 max-h-96 w-full overflow-y-auto rounded-3xl border border-ink-100 bg-white p-2 shadow-xl"
     >
       {#if loading && !results.length}
-        <p class="px-4 py-5 text-center text-sm font-bold text-ink-500">
-          검색 중...
-        </p>
+        <p class="px-4 py-5 text-center text-sm font-bold text-ink-500">검색 중...</p>
       {:else if errorMessage}
-        <p class="px-4 py-5 text-center text-sm font-bold text-rose-600">
-          {errorMessage}
-        </p>
+        <p class="px-4 py-5 text-center text-sm font-bold text-rose-600">{errorMessage}</p>
       {:else if !results.length}
         <p class="px-4 py-5 text-center text-sm font-bold text-ink-500">
-          일치하는 4인전 플레이어가 없습니다.
+          저장된 플레이어 중 일치하는 결과가 없습니다.
         </p>
       {:else}
         {#each results as player (player.id)}
