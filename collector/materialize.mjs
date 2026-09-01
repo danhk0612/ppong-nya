@@ -5,7 +5,18 @@ function asDate(unixSeconds) {
   return unixSeconds ? new Date(Number(unixSeconds) * 1000) : null;
 }
 
-function playerMetadata(account, result) {
+function parseMetadata(value) {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function playerMetadata(account, result, roundStats = null) {
   return JSON.stringify({
     levelId: account?.level?.id ?? null,
     levelScore: account?.level?.score ?? null,
@@ -16,10 +27,36 @@ function playerMetadata(account, result) {
     totalPoint: result?.total_point ?? null,
     partPoint2: result?.part_point_2 ?? null,
     gradingScore: result?.grading_score ?? null,
+    ...(roundStats ? { roundStats } : {}),
   });
 }
 
-export async function materializeCollectedGame(pool, head) {
+export async function updatePlayerRoundStats(pool, uuid, roundStatsBySeat) {
+  if (!Array.isArray(roundStatsBySeat) || roundStatsBySeat.length !== 4) return 0;
+  const [rows] = await pool.execute(
+    `SELECT p.id, p.seat, p.metadata
+       FROM players p
+       JOIN game_records g ON g.id=p.gameRecordId
+      WHERE g.source='majsoul-native' AND g.uuid=?`,
+    [uuid],
+  );
+
+  let updated = 0;
+  for (const row of rows) {
+    const seat = Number(row.seat);
+    if (!Number.isInteger(seat) || seat < 0 || seat > 3) continue;
+    const metadata = parseMetadata(row.metadata);
+    metadata.roundStats = roundStatsBySeat[seat];
+    await pool.execute(
+      `UPDATE players SET metadata=?, updatedAt=NOW(3) WHERE id=?`,
+      [JSON.stringify(metadata), row.id],
+    );
+    updated += 1;
+  }
+  return updated;
+}
+
+export async function materializeCollectedGame(pool, head, roundStatsBySeat = null) {
   const uuid = String(head?.uuid || "");
   const modeId = Number(head?.config?.meta?.mode_id || 0);
   const accounts = Array.isArray(head?.accounts) ? head.accounts : [];
@@ -45,6 +82,7 @@ export async function materializeCollectedGame(pool, head) {
     );
     if (existingRows.length) {
       await connection.commit();
+      if (roundStatsBySeat) await updatePlayerRoundStats(pool, uuid, roundStatsBySeat);
       return { gameRecordId: existingRows[0].id, players: 4, existing: true };
     }
 
@@ -99,7 +137,7 @@ export async function materializeCollectedGame(pool, head) {
           Number(result.part_point_1 ?? 0),
           Number(result.placement),
           result.grading_score == null ? null : Number(result.grading_score),
-          playerMetadata(account, result),
+          playerMetadata(account, result, roundStatsBySeat?.[seat] ?? null),
         ],
       );
 
