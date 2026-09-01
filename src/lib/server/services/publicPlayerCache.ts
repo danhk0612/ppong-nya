@@ -6,7 +6,7 @@ import {
 } from "$lib/server/services/externalApi";
 
 const SOURCE = "amae-koromo";
-const SUPPORTED_YONMA_MODE_IDS = [8, 9, 11, 12, 15, 16] as const;
+const SUPPORTED_YONMA_MODE_IDS = [2, 3, 5, 6, 8, 9, 11, 12, 15, 16] as const;
 const SUPPORTED_YONMA_MODE_SET = new Set<number>(SUPPORTED_YONMA_MODE_IDS);
 const RECORD_PAGE_SIZE = 100;
 const RECORD_REFRESH_TTL_SECONDS =
