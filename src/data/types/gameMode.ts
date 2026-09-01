@@ -1,10 +1,14 @@
 export enum GameMode {
-  王座 = 16,
-  玉 = 12,
+  铜 = 3,
+  银 = 6,
   金 = 9,
-  王东 = 15,
-  玉东 = 11,
+  玉 = 12,
+  王座 = 16,
+  铜东 = 2,
+  银东 = 5,
   金东 = 8,
+  玉东 = 11,
+  王东 = 15,
   三金 = 22,
   三玉 = 24,
   三王座 = 26,
@@ -14,12 +18,16 @@ export enum GameMode {
 }
 
 const KOREAN_YONMA_MODE_LABELS: Partial<Record<GameMode, string>> = {
-  [GameMode.王座]: "왕좌탁",
-  [GameMode.玉]: "옥탁",
-  [GameMode.金]: "금탁",
+  [GameMode.王座]: "왕좌탁 남풍전",
+  [GameMode.玉]: "옥탁 남풍전",
+  [GameMode.金]: "금탁 남풍전",
+  [GameMode.银]: "은탁 남풍전",
+  [GameMode.铜]: "동탁 남풍전",
   [GameMode.王东]: "왕좌탁 동풍전",
   [GameMode.玉东]: "옥탁 동풍전",
   [GameMode.金东]: "금탁 동풍전",
+  [GameMode.银东]: "은탁 동풍전",
+  [GameMode.铜东]: "동탁 동풍전",
 };
 
 export function modeLabel(mode: GameMode) {
