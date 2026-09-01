@@ -15,11 +15,10 @@ function parseJson(value) {
   }
 }
 
-function asUtcSqlDate(unixSeconds) {
-  if (!unixSeconds) return null;
-  const date = new Date(Number(unixSeconds) * 1000);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 23).replace("T", " ");
+function epochSeconds(value) {
+  if (value == null) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.trunc(numeric) : null;
 }
 
 try {
@@ -35,24 +34,28 @@ try {
   let repaired = 0;
   for (const row of rows) {
     const head = parseJson(row.head);
-    const startedAt = asUtcSqlDate(head?.start_time);
-    const endedAt = asUtcSqlDate(head?.end_time || head?.start_time);
-    if (!startedAt) {
+    const startEpoch = epochSeconds(head?.start_time);
+    const endEpoch = epochSeconds(head?.end_time) ?? startEpoch;
+    if (!startEpoch) {
       console.warn(`[time-backfill] skip ${row.uuid}: missing start_time`);
       continue;
     }
 
     await db.execute(
       `UPDATE game_records
-          SET startedAt=?, endedAt=?, updatedAt=UTC_TIMESTAMP(3)
+          SET startedAt=TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+              endedAt=TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+              updatedAt=UTC_TIMESTAMP(3)
         WHERE id=?`,
-      [startedAt, endedAt, row.gameRecordId],
+      [startEpoch, endEpoch, row.gameRecordId],
     );
     await db.execute(
       `UPDATE collector_games
-          SET start_time=?, end_time=?, updated_at=UTC_TIMESTAMP(3)
+          SET start_time=TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+              end_time=TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+              updated_at=UTC_TIMESTAMP(3)
         WHERE uuid=?`,
-      [startedAt, endedAt, row.uuid],
+      [startEpoch, endEpoch, row.uuid],
     );
     repaired += 1;
   }
@@ -68,7 +71,24 @@ try {
         SET cp.last_updated_at=UTC_TIMESTAMP(3), cp.updated_at=UTC_TIMESTAMP(3)`,
   );
 
+  const [[verification]] = await db.query(
+    `SELECT
+       COUNT(*) AS nativeGames,
+       SUM(startedAt > UTC_TIMESTAMP(3) + INTERVAL 5 MINUTE) AS futureGames,
+       MIN(startedAt) AS minStartedAt,
+       MAX(startedAt) AS maxStartedAt,
+       UTC_TIMESTAMP(3) AS utcNow
+     FROM game_records
+     WHERE source='majsoul-native'`,
+  );
+
   console.log(`[time-backfill] repaired games=${repaired}`);
+  console.log(
+    `[time-backfill] verify native=${verification.nativeGames} future=${verification.futureGames} range=${verification.minStartedAt}..${verification.maxStartedAt} utcNow=${verification.utcNow}`,
+  );
+  if (Number(verification.futureGames || 0) > 0) {
+    throw new Error(`time-backfill verification failed: ${verification.futureGames} native games are in the future`);
+  }
 } finally {
   await db.end();
 }
