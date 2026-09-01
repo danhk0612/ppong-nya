@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { getModeByModeId } from "./modes.mjs";
 
-function asDate(unixSeconds) {
-  if (!unixSeconds) return null;
-  const date = new Date(Number(unixSeconds) * 1000);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 23).replace("T", " ");
+function epochSeconds(value) {
+  if (value == null) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.trunc(numeric) : null;
 }
 
 function parseMetadata(value) {
@@ -90,21 +89,25 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
     }
 
     const gameRecordId = randomUUID();
-    const startedAt = asDate(head.start_time);
-    if (!startedAt) throw new Error(`materialize: missing start_time for ${uuid}`);
+    const startEpoch = epochSeconds(head.start_time);
+    const endEpoch = epochSeconds(head.end_time) ?? startEpoch;
+    if (!startEpoch) throw new Error(`materialize: missing start_time for ${uuid}`);
 
     await connection.execute(
       `INSERT INTO game_records
         (id, userId, externalId, source, sourceRecordId, uuid, mode, externalModeId,
          startedAt, endedAt, tableName, rounds, metadata, rawPayload, createdAt, updatedAt)
-       VALUES (?, NULL, NULL, 'majsoul-native', ?, ?, 'YONMA', ?, ?, ?, ?, NULL, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
+       VALUES (?, NULL, NULL, 'majsoul-native', ?, ?, 'YONMA', ?,
+         TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+         TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+         ?, NULL, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
       [
         gameRecordId,
         uuid,
         uuid,
         modeId,
-        startedAt,
-        asDate(head.end_time),
+        startEpoch,
+        endEpoch,
         `${mode.room} ${mode.round}`,
         JSON.stringify({
           category: head?.config?.category ?? null,
@@ -145,7 +148,7 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
       );
 
       const levelId = account?.level?.id == null ? null : Number(account.level.id);
-      const latestTimestamp = head.start_time == null ? null : Number(head.start_time);
+      const latestTimestamp = startEpoch;
       const [cachedRows] = await connection.execute(
         `SELECT id FROM cached_players WHERE player_id=? LIMIT 1`,
         [accountId],
