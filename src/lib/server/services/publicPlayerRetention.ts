@@ -49,14 +49,8 @@ async function cleanupPublicPlayerCache() {
     now.getTime() - PUBLIC_PLAYER_RETENTION.retentionDays * 24 * 60 * 60 * 1000,
   );
 
-  await db.playerStatisticsCache.deleteMany({
-    where: { expiresAt: { lt: now } },
-  });
   await db.externalApiCache.deleteMany({
     where: { expiresAt: { lt: now } },
-  });
-  await db.playerQueryCoverage.deleteMany({
-    where: { fetchedAt: { lt: retentionCutoff } },
   });
 
   await db.cachedPlayer.deleteMany({
