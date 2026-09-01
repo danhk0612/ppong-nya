@@ -1,8 +1,15 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import protobuf from "protobufjs";
 import WebSocket from "ws";
 
 const DEFAULT_BASE = "https://mahjongsoul.game.yo-star.com/";
+const YOSTAR_SDK_VERSION = "4.16.2";
+const YOSTAR_SIGNING_SALT = "347467131a466f6865d7f2662e38841fbe2adb23";
+const YOSTAR_REGIONS = {
+  en: { identifier: "US", pid: "US-MAJONGSOUL", lang: "en", sdkUrl: "https://en-sdk-api.yostarplat.com" },
+  kr: { identifier: "KR", pid: "KR-MAJONGSOUL", lang: "kr", sdkUrl: "https://jp-sdk-api.yostarplat.com" },
+  jp: { identifier: "JP", pid: "JP-MAJONGSOUL", lang: "jp", sdkUrl: "https://jp-sdk-api.yostarplat.com" },
+};
 const UNITY_LOBBY_ENDPOINTS = {
   en: "wss://engs.mahjongsoul.com/gateway",
   kr: "wss://engsbk.mahjongsoul.com/gateway",
@@ -37,6 +44,66 @@ async function resolveRuntime(baseUrl) {
   }
   if (!gateways.length) throw new Error("No Mahjong Soul websocket gateways available");
   return { version: version.version, protoJson, gateway: gateways[Math.floor(Math.random() * gateways.length)] };
+}
+
+function signYostarPayload(head, body) {
+  const headJson = JSON.stringify(head);
+  const bodyJson = JSON.stringify(body);
+  const sign = createHash("md5")
+    .update(headJson + bodyJson + YOSTAR_SIGNING_SALT)
+    .digest("hex")
+    .toUpperCase();
+  return { authorization: JSON.stringify({ Head: head, Sign: sign }), bodyJson };
+}
+
+async function refreshYostarSession({ uid, token, deviceId, region, sdkUrl }) {
+  const cfg = YOSTAR_REGIONS[region];
+  if (!cfg) throw new Error(`Unsupported Yostar region: ${region}`);
+  if (!deviceId) throw new Error("MAJSOUL_DEVICE_ID is required for Yostar saved-session login");
+
+  const head = {
+    Region: cfg.identifier,
+    PID: cfg.pid,
+    Channel: "web",
+    Platform: "pc",
+    Version: YOSTAR_SDK_VERSION,
+    Lang: cfg.lang,
+    DeviceID: deviceId,
+    UID: uid,
+    Token: token,
+    Time: Math.floor(Date.now() / 1000),
+  };
+  const body = {};
+  const signed = signYostarPayload(head, body);
+  const response = await fetch(`${sdkUrl || cfg.sdkUrl}/user/quick-login`, {
+    method: "POST",
+    headers: {
+      Authorization: signed.authorization,
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 ppong-nya-collector",
+    },
+    body: signed.bodyJson,
+  });
+
+  const text = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    payload = { raw: text };
+  }
+
+  if (!response.ok || payload?.Code !== 200) {
+    const code = payload?.Code ?? `HTTP_${response.status}`;
+    const message = payload?.Msg ?? payload?.Message ?? "unknown error";
+    throw new Error(`Yostar quick-login failed code=${code} message=${message}`);
+  }
+
+  const transientToken = payload?.Data?.UserInfo?.Token;
+  if (!transientToken) throw new Error("Yostar quick-login succeeded but did not return Data.UserInfo.Token");
+  console.log(`[collector] Yostar quick-login refreshed session region=${region}`);
+  return transientToken;
 }
 
 class RpcCodec {
@@ -88,9 +155,12 @@ export class MajsoulClient {
     baseUrl = process.env.MAJSOUL_URL_BASE || DEFAULT_BASE,
     uid,
     token,
+    deviceId = process.env.MAJSOUL_DEVICE_ID,
     accessToken,
     oauthType = uid && token ? 22 : 7,
     loginRegion = "en",
+    yostarRegion = process.env.MAJSOUL_YOSTAR_REGION || loginRegion,
+    yostarSdkUrl = process.env.MAJSOUL_YOSTAR_SDK_URL,
     routeId = process.env.MAJSOUL_ROUTE_ID,
     resourceVersion = process.env.MAJSOUL_RESOURCE_VERSION,
     productVersion = process.env.MAJSOUL_PRODUCT_VERSION,
@@ -99,9 +169,12 @@ export class MajsoulClient {
     this.baseUrl = baseUrl;
     this.uid = uid;
     this.token = token;
+    this.deviceId = deviceId;
     this.accessToken = accessToken;
     this.oauthType = Number(oauthType);
     this.loginRegion = loginRegion;
+    this.yostarRegion = yostarRegion;
+    this.yostarSdkUrl = yostarSdkUrl;
     this.routeId = routeId || `${loginRegion}-2`;
     this.resourceVersion = resourceVersion;
     this.productVersion = productVersion;
@@ -114,9 +187,27 @@ export class MajsoulClient {
       if (!this.uid || !this.token) {
         throw new Error("MAJSOUL_UID and MAJSOUL_TOKEN are required for Yostar OAuth type 22");
       }
+
+      const transientToken = await refreshYostarSession({
+        uid: this.uid,
+        token: this.token,
+        deviceId: this.deviceId,
+        region: this.yostarRegion,
+        sdkUrl: this.yostarSdkUrl,
+      });
+
+      const prepared = await this.rpc(".lq.Lobby.prepareLogin", {
+        type: 22,
+        access_token: transientToken,
+      });
+      if (prepared?.error?.code) {
+        throw new Error(`Mahjong Soul prepareLogin(type=22) failed gateway=${this.gateway}: ${JSON.stringify(prepared.error)}`);
+      }
+      console.log("[collector] Mahjong Soul prepareLogin completed oauthType=22");
+
       const auth = await this.rpc(".lq.Lobby.oauth2Auth", {
         type: 22,
-        code: this.token,
+        code: transientToken,
         uid: this.uid,
         client_version_string: this.clientVersionString,
       });
