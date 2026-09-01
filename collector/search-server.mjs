@@ -30,24 +30,46 @@ function sendJson(response, status, payload) {
 }
 
 async function searchPlayers(client, query, limit) {
-  if (/^\d+$/.test(query)) {
-    const result = await client.searchAccountById(Number(query));
-    const player = normalizePlayer(result.player);
-    return player ? [player] : [];
-  }
-
   const matched = await client.searchAccountByPattern(query);
-  const accountIds = Array.isArray(matched.match_accounts)
-    ? matched.match_accounts.slice(0, limit)
-    : [];
-
-  const players = [];
-  for (const accountId of accountIds) {
-    const result = await client.searchAccountById(Number(accountId));
-    const player = normalizePlayer(result.player);
-    if (player) players.push(player);
+  if (matched?.error?.code) {
+    console.warn(`[collector] native searchAccountByPattern query=${JSON.stringify(query)} error=${matched.error.code}`);
   }
-  return players;
+
+  const accountIds = [];
+  const addId = (value) => {
+    const id = Number(value || 0);
+    if (Number.isInteger(id) && id > 0 && !accountIds.includes(id)) accountIds.push(id);
+  };
+
+  // Mahjong Soul returns the decoded internal account id separately for an
+  // exact public-id match. Pattern matches are already internal account ids.
+  addId(matched?.decode_id);
+  if (Array.isArray(matched?.match_accounts)) {
+    for (const value of matched.match_accounts) {
+      addId(value);
+      if (accountIds.length >= limit) break;
+    }
+  }
+
+  if (!accountIds.length) {
+    console.log(`[collector] native search query=${JSON.stringify(query)} decoded=0 results=0`);
+    return [];
+  }
+
+  const brief = await client.rpc(".lq.Lobby.fetchMultiAccountBrief", {
+    account_id_list: accountIds.slice(0, limit),
+  });
+  if (brief?.error?.code) {
+    console.warn(`[collector] native fetchMultiAccountBrief error=${brief.error.code}`);
+  }
+
+  const players = Array.isArray(brief?.players)
+    ? brief.players.map(normalizePlayer).filter(Boolean)
+    : [];
+  console.log(
+    `[collector] native search query=${JSON.stringify(query)} decoded=${accountIds.length} results=${players.length}`,
+  );
+  return players.slice(0, limit);
 }
 
 export function startNativeSearchServer(client) {
@@ -70,7 +92,7 @@ export function startNativeSearchServer(client) {
       const requestedLimit = Number(url.searchParams.get("limit") || MAX_RESULTS);
       const limit = Math.max(1, Math.min(MAX_RESULTS, Number.isFinite(requestedLimit) ? requestedLimit : MAX_RESULTS));
       const players = await searchPlayers(client, query, limit);
-      sendJson(response, 200, players.slice(0, limit));
+      sendJson(response, 200, players);
     } catch (error) {
       console.warn(`[collector] native search failed: ${String(error?.message || error)}`);
       sendJson(response, 502, { message: "Mahjong Soul player search failed" });
