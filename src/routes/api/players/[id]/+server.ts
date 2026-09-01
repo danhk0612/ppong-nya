@@ -42,11 +42,15 @@ function parseRange(url: URL) {
   };
 }
 
+function readNumericMetadata(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  if (!(key in metadata)) return null;
+  const value = Number((metadata as Record<string, unknown>)[key]);
+  return Number.isFinite(value) ? value : null;
+}
+
 function readPlayerLevel(metadata: unknown) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return 0;
-  if ("level" in metadata) return Number(metadata.level) || 0;
-  if ("levelId" in metadata) return Number(metadata.levelId) || 0;
-  return 0;
+  return readNumericMetadata(metadata, "level") ?? readNumericMetadata(metadata, "levelId") ?? 0;
 }
 
 function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>["records"][number]) {
@@ -72,9 +76,64 @@ function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPl
 }
 
 type StatisticsPayload = Awaited<ReturnType<typeof getPublicPlayerStatistics>> | {
-  metadata: null;
-  extendedStats: null;
+  metadata: unknown;
+  extendedStats: unknown;
 };
+
+function getNativeStatistics(
+  state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
+) {
+  const playerId = state.player.playerId;
+  const entries = state.records
+    .map(({ gameRecord }) => {
+      const player = gameRecord.players.find((item) => item.accountId === playerId);
+      return player ? { gameRecord, player } : null;
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  if (!entries.length) {
+    return { metadata: null, extendedStats: null };
+  }
+
+  const rankCounts = [0, 0, 0, 0];
+  const rankScoreSums = [0, 0, 0, 0];
+  for (const { player } of entries) {
+    const index = Math.max(0, Math.min(3, player.placement - 1));
+    rankCounts[index] += 1;
+    rankScoreSums[index] += player.score;
+  }
+
+  const count = entries.length;
+  const latest = entries[0].player;
+  const latestLevelId = readNumericMetadata(latest.metadata, "levelId") ?? state.player.level ?? 10101;
+  const latestLevelScore = readNumericMetadata(latest.metadata, "levelScore") ?? 0;
+  const latestDelta = latest.ratingDelta == null ? 0 : Number(latest.ratingDelta);
+  const maxLevelId = state.player.maxLevel ?? latestLevelId;
+
+  return {
+    metadata: {
+      id: Number(playerId),
+      nickname: state.player.nickname,
+      count,
+      level: { id: latestLevelId, score: latestLevelScore, delta: latestDelta },
+      max_level: {
+        id: maxLevelId,
+        score: maxLevelId === latestLevelId ? latestLevelScore : 0,
+        delta: maxLevelId === latestLevelId ? latestDelta : 0,
+      },
+      rank_rates: rankCounts.map((value) => value / count),
+      avg_rank:
+        rankCounts.reduce((sum, value, index) => sum + value * (index + 1), 0) / count,
+      rank_avg_score: rankCounts.map((value, index) =>
+        value ? rankScoreSums[index] / value : 0,
+      ),
+      negative_rate:
+        entries.filter(({ player }) => player.score < 25000).length / count,
+      played_modes: [...new Set(entries.map(({ gameRecord }) => gameRecord.externalModeId).filter(Boolean))],
+    },
+    extendedStats: null,
+  };
+}
 
 function serializeState(
   state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
@@ -124,9 +183,7 @@ async function getStatisticsWithFallback(input: {
   state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>;
   native: boolean;
 }) {
-  if (input.native) {
-    return { metadata: null, extendedStats: null };
-  }
+  if (input.native) return getNativeStatistics(input.state);
 
   try {
     return await getPublicPlayerStatistics(input);
@@ -200,9 +257,7 @@ export const POST: RequestHandler = async (event) => {
     const native = cached ? await hasNativePlayerRecords(cached.player.id) : false;
 
     if (cached && native) {
-      return json(
-        serializeState(cached, { metadata: null, extendedStats: null }),
-      );
+      return json(serializeState(cached, getNativeStatistics(cached)));
     }
 
     const state = await refreshPublicPlayer({
