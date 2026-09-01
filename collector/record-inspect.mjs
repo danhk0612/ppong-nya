@@ -17,6 +17,42 @@ function compact(value) {
   return result;
 }
 
+function decodeStoredRecord(client, recordData) {
+  const codec = client.codec;
+  if (!codec?.root || !codec?.wrapper) throw new Error("Mahjong Soul protobuf codec is not initialized");
+
+  const outer = codec.wrapper.decode(Buffer.from(recordData));
+  const outerName = String(outer.name || "");
+  if (outerName !== ".lq.GameDetailRecords") {
+    throw new Error(`Unexpected record wrapper ${outerName || "(empty)"}`);
+  }
+
+  const detailType = codec.root.lookupType("lq.GameDetailRecords");
+  const details = detailType.decode(outer.data);
+  const recordBuffers = Array.isArray(details.records) ? details.records : [];
+  const records = [];
+
+  for (const bytes of recordBuffers) {
+    const wrapper = codec.wrapper.decode(bytes);
+    const name = String(wrapper.name || "");
+    let payload = null;
+    try {
+      const type = codec.root.lookupType(name.replace(/^\./, ""));
+      payload = type.toObject(type.decode(wrapper.data), {
+        longs: Number,
+        enums: String,
+        bytes: Buffer,
+        defaults: false,
+      });
+    } catch (error) {
+      payload = { decodeError: String(error?.message || error) };
+    }
+    records.push({ name, payload });
+  }
+
+  return { name: outerName, records };
+}
+
 async function main() {
   const [rows] = await db.execute(
     `SELECT uuid, record_data AS recordData
@@ -42,7 +78,7 @@ async function main() {
 
   try {
     await client.connect();
-    const decoded = client.decodeGameRecordData(rows[0].recordData);
+    const decoded = decodeStoredRecord(client, rows[0].recordData);
     const counts = new Map();
     for (const record of decoded.records) {
       counts.set(record.name, (counts.get(record.name) ?? 0) + 1);
