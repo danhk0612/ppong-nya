@@ -2,6 +2,8 @@ import { json } from "@sveltejs/kit";
 import { db } from "$lib/server/db";
 import type { RequestHandler } from "./$types";
 
+const NATIVE_SOURCE = "majsoul-native";
+
 export const GET: RequestHandler = async ({ url }) => {
   const query = url.searchParams.get("q")?.trim() ?? "";
   const requestedLimit = Number(url.searchParams.get("limit") ?? 20);
@@ -10,9 +12,16 @@ export const GET: RequestHandler = async ({ url }) => {
   if (!query) return json([]);
 
   const players = await db.cachedPlayer.findMany({
-    where: /^\d+$/.test(query)
-      ? { playerId: query }
-      : { nickname: { contains: query } },
+    where: {
+      ...(/^\d+$/.test(query)
+        ? { playerId: query }
+        : { nickname: { contains: query } }),
+      gameRecords: {
+        some: {
+          gameRecord: { source: NATIVE_SOURCE },
+        },
+      },
+    },
     orderBy: [
       { latestTimestamp: "desc" },
       { lastUpdatedAt: "desc" },
