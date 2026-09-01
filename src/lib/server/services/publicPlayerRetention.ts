@@ -1,7 +1,7 @@
 import { env } from "$env/dynamic/private";
 import { db } from "$lib/server/db";
 
-const SOURCE = "amae-koromo";
+const SOURCE = "majsoul-native";
 const DEFAULT_RETENTION_DAYS = 90;
 const DEFAULT_MAX_RECORDS_PER_PLAYER = 2000;
 const MAINTENANCE_INTERVAL_MS = 60 * 60 * 1000;
@@ -71,9 +71,7 @@ async function cleanupPublicPlayerCache() {
   await db.gameRecord.deleteMany({
     where: {
       source: SOURCE,
-      userId: null,
       cachedPlayerLinks: { none: {} },
-      favoriteLinks: { none: {} },
     },
   });
 }
