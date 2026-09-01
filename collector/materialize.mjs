@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { getModeByModeId } from "./modes.mjs";
 
-function asDate(unixSeconds) {
-  return unixSeconds ? new Date(Number(unixSeconds) * 1000) : null;
+function epochSeconds(value) {
+  if (value == null) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.trunc(numeric) : null;
 }
 
 function parseMetadata(value) {
@@ -48,7 +50,7 @@ export async function updatePlayerRoundStats(pool, uuid, roundStatsBySeat) {
     const metadata = parseMetadata(row.metadata);
     metadata.roundStats = roundStatsBySeat[seat];
     await pool.execute(
-      `UPDATE players SET metadata=?, updatedAt=NOW(3) WHERE id=?`,
+      `UPDATE players SET metadata=?, updatedAt=UTC_TIMESTAMP(3) WHERE id=?`,
       [JSON.stringify(metadata), row.id],
     );
     updated += 1;
@@ -87,21 +89,25 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
     }
 
     const gameRecordId = randomUUID();
-    const startedAt = asDate(head.start_time);
-    if (!startedAt) throw new Error(`materialize: missing start_time for ${uuid}`);
+    const startEpoch = epochSeconds(head.start_time);
+    const endEpoch = epochSeconds(head.end_time) ?? startEpoch;
+    if (!startEpoch) throw new Error(`materialize: missing start_time for ${uuid}`);
 
     await connection.execute(
       `INSERT INTO game_records
         (id, userId, externalId, source, sourceRecordId, uuid, mode, externalModeId,
          startedAt, endedAt, tableName, rounds, metadata, rawPayload, createdAt, updatedAt)
-       VALUES (?, NULL, NULL, 'majsoul-native', ?, ?, 'YONMA', ?, ?, ?, ?, NULL, ?, ?, NOW(3), NOW(3))`,
+       VALUES (?, NULL, NULL, 'majsoul-native', ?, ?, 'YONMA', ?,
+         TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+         TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
+         ?, NULL, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
       [
         gameRecordId,
         uuid,
         uuid,
         modeId,
-        startedAt,
-        asDate(head.end_time),
+        startEpoch,
+        endEpoch,
         `${mode.room} ${mode.round}`,
         JSON.stringify({
           category: head?.config?.category ?? null,
@@ -127,7 +133,7 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
         `INSERT INTO players
           (id, gameRecordId, seat, accountId, nickname, rankLabel, score, placement,
            ratingDelta, metadata, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NOW(3), NOW(3))`,
+         VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
         [
           randomUUID(),
           gameRecordId,
@@ -142,7 +148,7 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
       );
 
       const levelId = account?.level?.id == null ? null : Number(account.level.id);
-      const latestTimestamp = head.start_time == null ? null : Number(head.start_time);
+      const latestTimestamp = startEpoch;
       const [cachedRows] = await connection.execute(
         `SELECT id FROM cached_players WHERE player_id=? LIMIT 1`,
         [accountId],
@@ -165,7 +171,7 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
                     WHEN latest_timestamp IS NULL OR ? > latest_timestamp THEN ?
                     ELSE latest_timestamp
                   END,
-                  last_updated_at=NOW(3), updated_at=NOW(3)
+                  last_updated_at=UTC_TIMESTAMP(3), updated_at=UTC_TIMESTAMP(3)
             WHERE id=?`,
           [nickname, levelId, levelId, levelId, levelId, latestTimestamp, latestTimestamp, latestTimestamp, cachedPlayerId],
         );
@@ -175,7 +181,7 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
           `INSERT INTO cached_players
             (id, player_id, nickname, level, max_level, latest_timestamp,
              last_accessed_at, last_updated_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, NOW(3), NOW(3), NOW(3), NOW(3))`,
+           VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3), UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
           [cachedPlayerId, accountId, nickname, levelId, levelId, latestTimestamp],
         );
       }
@@ -183,7 +189,7 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
       await connection.execute(
         `INSERT IGNORE INTO cached_player_game_records
           (cached_player_id, game_record_id, created_at)
-         VALUES (?, ?, NOW(3))`,
+         VALUES (?, ?, UTC_TIMESTAMP(3))`,
         [cachedPlayerId, gameRecordId],
       );
     }
