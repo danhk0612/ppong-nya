@@ -300,6 +300,10 @@ export class MajsoulClient {
     return this.rpc(".lq.Lobby.fetchGameRecord", { game_uuid: uuid, client_version_string: this.clientVersionString });
   }
 
+  searchAccountByEid(eid) {
+    return this.rpc(".lq.Lobby.searchAccountByEid", { eid: Number(eid) });
+  }
+
   searchAccountById(accountId) {
     return this.rpc(".lq.Lobby.searchAccountById", { account_id: Number(accountId) });
   }
