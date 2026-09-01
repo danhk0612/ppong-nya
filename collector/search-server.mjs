@@ -29,6 +29,14 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+async function fetchPlayerById(client, accountId) {
+  const result = await client.searchAccountById(Number(accountId));
+  if (result?.error?.code) {
+    console.warn(`[collector] native searchAccountById account=${accountId} error=${result.error.code}`);
+  }
+  return normalizePlayer(result?.player);
+}
+
 async function searchPlayers(client, query, limit) {
   const matched = await client.searchAccountByPattern(query);
   if (matched?.error?.code) {
@@ -41,8 +49,8 @@ async function searchPlayers(client, query, limit) {
     if (Number.isInteger(id) && id > 0 && !accountIds.includes(id)) accountIds.push(id);
   };
 
-  // Mahjong Soul returns the decoded internal account id separately for an
-  // exact public-id match. Pattern matches are already internal account ids.
+  // For an exact public-id match, Mahjong Soul returns the decoded internal
+  // account id in decode_id. Pattern matches are already internal account ids.
   addId(matched?.decode_id);
   if (Array.isArray(matched?.match_accounts)) {
     for (const value of matched.match_accounts) {
@@ -56,20 +64,16 @@ async function searchPlayers(client, query, limit) {
     return [];
   }
 
-  const brief = await client.rpc(".lq.Lobby.fetchMultiAccountBrief", {
-    account_id_list: accountIds.slice(0, limit),
-  });
-  if (brief?.error?.code) {
-    console.warn(`[collector] native fetchMultiAccountBrief error=${brief.error.code}`);
+  const players = [];
+  for (const accountId of accountIds.slice(0, limit)) {
+    const player = await fetchPlayerById(client, accountId);
+    if (player) players.push(player);
   }
 
-  const players = Array.isArray(brief?.players)
-    ? brief.players.map(normalizePlayer).filter(Boolean)
-    : [];
   console.log(
     `[collector] native search query=${JSON.stringify(query)} decoded=${accountIds.length} results=${players.length}`,
   );
-  return players.slice(0, limit);
+  return players;
 }
 
 export function startNativeSearchServer(client) {
