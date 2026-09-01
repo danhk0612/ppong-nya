@@ -1,4 +1,5 @@
 import { json } from "@sveltejs/kit";
+import { db } from "$lib/server/db";
 import {
   getDefaultPublicPlayerRange,
   getPublicPlayerState,
@@ -10,6 +11,8 @@ import {
   getPublicPlayerStatistics,
 } from "$lib/server/services/publicPlayerStatistics";
 import type { RequestHandler } from "./$types";
+
+const NATIVE_SOURCE = "majsoul-native";
 
 function parseDate(value: string | null, fallback: Date) {
   if (!value) return fallback;
@@ -39,9 +42,18 @@ function parseRange(url: URL) {
   };
 }
 
+function readPlayerLevel(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return 0;
+  if ("level" in metadata) return Number(metadata.level) || 0;
+  if ("levelId" in metadata) return Number(metadata.levelId) || 0;
+  return 0;
+}
+
 function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>["records"][number]) {
   const { gameRecord } = link;
-  if (gameRecord.rawPayload) return gameRecord.rawPayload;
+  if (gameRecord.source !== NATIVE_SOURCE && gameRecord.rawPayload) {
+    return gameRecord.rawPayload;
+  }
 
   return {
     modeId: gameRecord.externalModeId,
@@ -51,14 +63,10 @@ function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPl
     players: gameRecord.players.map((player) => ({
       accountId: Number(player.accountId),
       nickname: player.nickname,
-      level:
-        player.metadata &&
-        typeof player.metadata === "object" &&
-        !Array.isArray(player.metadata) &&
-        "level" in player.metadata
-          ? Number(player.metadata.level)
-          : 0,
+      level: readPlayerLevel(player.metadata),
       score: player.score,
+      gradingScore:
+        player.ratingDelta == null ? undefined : Number(player.ratingDelta),
     })),
   };
 }
@@ -100,10 +108,26 @@ function errorResponse(reason: unknown) {
   return json({ message }, { status });
 }
 
+async function hasNativePlayerRecords(cachedPlayerId: string) {
+  return (
+    (await db.cachedPlayerGameRecord.count({
+      where: {
+        cachedPlayerId,
+        gameRecord: { source: NATIVE_SOURCE },
+      },
+    })) > 0
+  );
+}
+
 async function getStatisticsWithFallback(input: {
   host: string;
   state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>;
+  native: boolean;
 }) {
+  if (input.native) {
+    return { metadata: null, extendedStats: null };
+  }
+
   try {
     return await getPublicPlayerStatistics(input);
   } catch (reason) {
@@ -127,7 +151,9 @@ export const GET: RequestHandler = async (event) => {
     await runPublicPlayerCacheMaintenance();
     const range = parseRange(event.url);
     const cached = await getPublicPlayerState({ playerId, ...range });
+    const native = cached ? await hasNativePlayerRecords(cached.player.id) : false;
     const shouldRefresh =
+      !native &&
       event.url.searchParams.get("refresh") !== "0" &&
       (!cached || !cached.rangeCovered || cached.stale);
 
@@ -153,6 +179,7 @@ export const GET: RequestHandler = async (event) => {
     const statistics = await getStatisticsWithFallback({
       host: event.url.host,
       state,
+      native,
     });
     return json(serializeState(state, statistics));
   } catch (reason) {
@@ -169,6 +196,15 @@ export const POST: RequestHandler = async (event) => {
   try {
     await runPublicPlayerCacheMaintenance();
     const range = parseRange(event.url);
+    const cached = await getPublicPlayerState({ playerId, ...range });
+    const native = cached ? await hasNativePlayerRecords(cached.player.id) : false;
+
+    if (cached && native) {
+      return json(
+        serializeState(cached, { metadata: null, extendedStats: null }),
+      );
+    }
+
     const state = await refreshPublicPlayer({
       host: event.url.host,
       playerId,
