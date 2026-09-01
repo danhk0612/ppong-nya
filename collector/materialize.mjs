@@ -72,7 +72,9 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
   const mode = getModeByModeId(modeId);
   if (!mode) throw new Error(`materialize: unsupported mode ${modeId}`);
 
-  const resultBySeat = new Map(results.map((item, index) => [Number(item.seat), { ...item, placement: index + 1 }]));
+  const resultBySeat = new Map(
+    results.map((item, index) => [Number(item.seat), { ...item, placement: index + 1 }]),
+  );
   const connection = await pool.getConnection();
 
   try {
@@ -95,9 +97,9 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
 
     await connection.execute(
       `INSERT INTO game_records
-        (id, userId, externalId, source, sourceRecordId, uuid, mode, externalModeId,
+        (id, externalId, source, sourceRecordId, uuid, mode, externalModeId,
          startedAt, endedAt, tableName, rounds, metadata, rawPayload, createdAt, updatedAt)
-       VALUES (?, NULL, NULL, 'majsoul-native', ?, ?, 'YONMA', ?,
+       VALUES (?, NULL, 'majsoul-native', ?, ?, 'YONMA', ?,
          TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
          TIMESTAMPADD(SECOND, ?, '1970-01-01 00:00:00'),
          ?, NULL, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
@@ -173,7 +175,17 @@ export async function materializeCollectedGame(pool, head, roundStatsBySeat = nu
                   END,
                   last_updated_at=UTC_TIMESTAMP(3), updated_at=UTC_TIMESTAMP(3)
             WHERE id=?`,
-          [nickname, levelId, levelId, levelId, levelId, latestTimestamp, latestTimestamp, latestTimestamp, cachedPlayerId],
+          [
+            nickname,
+            levelId,
+            levelId,
+            levelId,
+            levelId,
+            latestTimestamp,
+            latestTimestamp,
+            latestTimestamp,
+            cachedPlayerId,
+          ],
         );
       } else {
         cachedPlayerId = randomUUID();
