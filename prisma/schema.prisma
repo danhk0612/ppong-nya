@@ -68,9 +68,7 @@ model CachedPlayer {
   createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
 
-  gameRecords       CachedPlayerGameRecord[]
-  queryCoverages    PlayerQueryCoverage[]
-  statisticsCaches PlayerStatisticsCache[]
+  gameRecords CachedPlayerGameRecord[]
 
   @@index([nickname])
   @@index([lastAccessedAt])
@@ -89,44 +87,6 @@ model CachedPlayerGameRecord {
   @@id([cachedPlayerId, gameRecordId])
   @@index([gameRecordId])
   @@map("cached_player_game_records")
-}
-
-model PlayerQueryCoverage {
-  id             String   @id @default(cuid())
-  cachedPlayerId String   @map("cached_player_id")
-  modeKey        String   @map("mode_key") @db.VarChar(191)
-  periodStart    DateTime @map("period_start") @db.DateTime(3)
-  periodEnd      DateTime @map("period_end") @db.DateTime(3)
-  fetchedAt      DateTime @default(now()) @map("fetched_at") @db.DateTime(3)
-  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.DateTime(3)
-
-  cachedPlayer CachedPlayer @relation(fields: [cachedPlayerId], references: [id], onDelete: Cascade)
-
-  @@unique([cachedPlayerId, modeKey, periodStart, periodEnd])
-  @@index([cachedPlayerId, periodStart, periodEnd])
-  @@index([fetchedAt])
-  @@map("player_query_coverages")
-}
-
-model PlayerStatisticsCache {
-  id             String    @id @default(cuid())
-  cachedPlayerId String    @map("cached_player_id")
-  cacheKey       String    @unique @map("cache_key") @db.VarChar(191)
-  modeKey        String    @map("mode_key") @db.VarChar(191)
-  periodStart    DateTime  @map("period_start") @db.DateTime(3)
-  periodEnd      DateTime  @map("period_end") @db.DateTime(3)
-  payload        Json
-  computedAt     DateTime  @default(now()) @map("computed_at") @db.DateTime(3)
-  expiresAt      DateTime? @map("expires_at") @db.DateTime(3)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
-
-  cachedPlayer CachedPlayer @relation(fields: [cachedPlayerId], references: [id], onDelete: Cascade)
-
-  @@index([cachedPlayerId, periodStart, periodEnd])
-  @@index([expiresAt])
-  @@map("player_statistics_caches")
 }
 
 model ExternalApiCache {
