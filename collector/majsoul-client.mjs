@@ -300,6 +300,14 @@ export class MajsoulClient {
     return this.rpc(".lq.Lobby.fetchGameRecord", { game_uuid: uuid, client_version_string: this.clientVersionString });
   }
 
+  searchAccountById(accountId) {
+    return this.rpc(".lq.Lobby.searchAccountById", { account_id: Number(accountId) });
+  }
+
+  searchAccountByPattern(pattern) {
+    return this.rpc(".lq.Lobby.searchAccountByPattern", { search_next: false, pattern: String(pattern) });
+  }
+
   decodeGameRecordData(buffer) {
     if (!this.codec) throw new Error("Mahjong Soul client is not connected");
     return this.codec.decodeGameRecordData(buffer);
