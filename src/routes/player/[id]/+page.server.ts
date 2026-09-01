@@ -1,5 +1,5 @@
 import { error, redirect } from "@sveltejs/kit";
-import { resolvePublicPlayerName } from "$lib/server/services/publicPlayerResolver";
+import { db } from "$lib/server/db";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ params, url }) => {
@@ -12,9 +12,15 @@ export const load: PageServerLoad = async ({ params, url }) => {
     return { playerId: key };
   }
 
-  const matches = await resolvePublicPlayerName({
-    host: url.host,
-    nickname: key,
+  const matches = await db.cachedPlayer.findMany({
+    where: {
+      nickname: key,
+      gameRecords: {
+        some: { gameRecord: { source: "majsoul-native" } },
+      },
+    },
+    orderBy: [{ lastUpdatedAt: "desc" }, { latestTimestamp: "desc" }],
+    take: 2,
   });
 
   if (!matches.length) {
