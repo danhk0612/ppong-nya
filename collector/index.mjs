@@ -1,5 +1,6 @@
 import mysql from "mysql2/promise";
 import { MajsoulClient } from "./majsoul-client.mjs";
+import { materializeCollectedGame } from "./materialize.mjs";
 import { FOUR_PLAYER_RANKED_MODES, MODE_IDS } from "./modes.mjs";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -7,7 +8,8 @@ const MAJSOUL_UID = process.env.MAJSOUL_UID;
 const MAJSOUL_TOKEN = process.env.MAJSOUL_TOKEN;
 const MAJSOUL_DEVICE_ID = process.env.MAJSOUL_DEVICE_ID;
 const LEGACY_ACCESS_TOKEN = process.env.MAJSOUL_ACCESS_TOKEN;
-const OAUTH_TYPE = Number(process.env.MAJSOUL_OAUTH_TYPE || (MAJSOUL_UID && MAJSOUL_TOKEN ? 22 : 7));
+const LOGIN_REGION = process.env.MAJSOUL_LOGIN_REGION || "en";
+const OAUTH_TYPE = Number(process.env.MAJSOUL_OAUTH_TYPE || (MAJSOUL_UID && MAJSOUL_TOKEN ? (LOGIN_REGION === "kr" ? 23 : 22) : 7));
 const POLL_INTERVAL_MS = Math.max(5000, Number(process.env.COLLECTOR_POLL_INTERVAL_MS || 7000));
 const RECORD_DELAY_MS = Math.max(5 * 60_000, Number(process.env.COLLECTOR_RECORD_DELAY_MS || 20 * 60_000));
 const BATCH_SIZE = Math.max(1, Math.min(100, Number(process.env.COLLECTOR_RECORD_BATCH_SIZE || 20)));
@@ -18,8 +20,8 @@ if (!DATABASE_URL) throw new Error("DATABASE_URL is required");
 if (!(MAJSOUL_UID && MAJSOUL_TOKEN) && !LEGACY_ACCESS_TOKEN) {
   throw new Error("MAJSOUL_UID and MAJSOUL_TOKEN are required for Yostar login (or MAJSOUL_ACCESS_TOKEN for legacy login)");
 }
-if (OAUTH_TYPE === 22 && !MAJSOUL_DEVICE_ID) {
-  throw new Error("MAJSOUL_DEVICE_ID is required for Yostar OAuth type 22 saved-session login");
+if ((OAUTH_TYPE === 22 || OAUTH_TYPE === 23) && !MAJSOUL_DEVICE_ID) {
+  throw new Error(`MAJSOUL_DEVICE_ID is required for Yostar OAuth type ${OAUTH_TYPE} saved-session login`);
 }
 
 const db = mysql.createPool(DATABASE_URL);
@@ -130,6 +132,8 @@ async function processPendingRecords(client) {
         [modeId, asDate(head.start_time), asDate(head.end_time), JSON.stringify(head), recordData, uuid],
       );
       console.log(`[collector] collected ${uuid} mode=${modeId} bytes=${recordData.length}`);
+      const materialized = await materializeCollectedGame(db, head);
+      console.log(`[collector] materialized ${uuid} gameRecord=${materialized.gameRecordId} players=${materialized.players}`);
     } catch (error) {
       console.warn(`[collector] failed ${uuid}: ${compactError(error)}`);
       await markRetry(uuid, error, 15);
@@ -156,7 +160,7 @@ async function run() {
     accessToken: LEGACY_ACCESS_TOKEN,
     oauthType: OAUTH_TYPE,
     baseUrl: process.env.MAJSOUL_URL_BASE,
-    loginRegion: process.env.MAJSOUL_LOGIN_REGION || "en",
+    loginRegion: LOGIN_REGION,
     yostarRegion: process.env.MAJSOUL_YOSTAR_REGION,
     yostarSdkUrl: process.env.MAJSOUL_YOSTAR_SDK_URL,
     resourceVersion: process.env.MAJSOUL_RESOURCE_VERSION,
