@@ -13,16 +13,20 @@ export enum GameMode {
   三王东 = 25,
 }
 
-const KOREAN_YONMA_MODE_LABELS: Partial<Record<GameMode, string>> = {
-  [GameMode.王座]: "왕좌탁",
-  [GameMode.玉]: "옥탁",
-  [GameMode.金]: "금탁",
-  [GameMode.王东]: "왕좌탁 동풍전",
-  [GameMode.玉东]: "옥탁 동풍전",
-  [GameMode.金东]: "금탁 동풍전",
+const KOREAN_YONMA_MODE_LABELS: Record<number, string> = {
+  16: "왕좌탁 남풍전",
+  15: "왕좌탁 동풍전",
+  12: "옥탁 남풍전",
+  11: "옥탁 동풍전",
+  9: "금탁 남풍전",
+  8: "금탁 동풍전",
+  6: "은탁 남풍전",
+  5: "은탁 동풍전",
+  3: "동탁 남풍전",
+  2: "동탁 동풍전",
 };
 
-export function modeLabel(mode: GameMode) {
+export function modeLabel(mode: GameMode | number) {
   return KOREAN_YONMA_MODE_LABELS[mode] ?? "지원하지 않는 대국";
 }
 export function parseCombinedMode(modeString?: string): GameMode[] {

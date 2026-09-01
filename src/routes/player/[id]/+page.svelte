@@ -23,12 +23,16 @@
 
   const MODE_OPTIONS = [
     { value: "all", label: "전체" },
-    { value: "16", label: "왕좌탁" },
-    { value: "12", label: "옥탁" },
-    { value: "8", label: "금탁" },
+    { value: "16", label: "왕좌탁 남풍전" },
     { value: "15", label: "왕좌탁 동풍전" },
+    { value: "12", label: "옥탁 남풍전" },
     { value: "11", label: "옥탁 동풍전" },
-    { value: "9", label: "금탁 동풍전" },
+    { value: "9", label: "금탁 남풍전" },
+    { value: "8", label: "금탁 동풍전" },
+    { value: "6", label: "은탁 남풍전" },
+    { value: "5", label: "은탁 동풍전" },
+    { value: "3", label: "동탁 남풍전" },
+    { value: "2", label: "동탁 동풍전" },
   ];
 
   const PERIOD_OPTIONS = [
