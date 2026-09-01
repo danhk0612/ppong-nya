@@ -3,13 +3,8 @@ import { db } from "$lib/server/db";
 import {
   getDefaultPublicPlayerRange,
   getPublicPlayerState,
-  refreshPublicPlayer,
 } from "$lib/server/services/publicPlayerCache";
 import { runPublicPlayerCacheMaintenance } from "$lib/server/services/publicPlayerRetention";
-import {
-  getCachedPublicPlayerStatistics,
-  getPublicPlayerStatistics,
-} from "$lib/server/services/publicPlayerStatistics";
 import type { RequestHandler } from "./$types";
 
 const NATIVE_SOURCE = "majsoul-native";
@@ -26,6 +21,8 @@ const ROUND_STAT_KEYS = [
 ] as const;
 
 type RoundStats = Record<(typeof ROUND_STAT_KEYS)[number], number>;
+type PlayerState = NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>;
+type PlayerRecordLink = PlayerState["records"][number];
 
 function parseDate(value: string | null, fallback: Date) {
   if (!value) return fallback;
@@ -78,12 +75,12 @@ function readRoundStats(metadata: unknown): Partial<RoundStats> | null {
   return result;
 }
 
-function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>["records"][number]) {
-  const { gameRecord } = link;
-  if (gameRecord.source !== NATIVE_SOURCE && gameRecord.rawPayload) {
-    return gameRecord.rawPayload;
-  }
+function nativeRecords(state: PlayerState) {
+  return state.records.filter(({ gameRecord }) => gameRecord.source === NATIVE_SOURCE);
+}
 
+function serializeRecord(link: PlayerRecordLink) {
+  const { gameRecord } = link;
   return {
     modeId: gameRecord.externalModeId,
     uuid: gameRecord.uuid,
@@ -100,16 +97,9 @@ function serializeRecord(link: NonNullable<Awaited<ReturnType<typeof getPublicPl
   };
 }
 
-type StatisticsPayload = Awaited<ReturnType<typeof getPublicPlayerStatistics>> | {
-  metadata: unknown;
-  extendedStats: unknown;
-};
-
-function getNativeStatistics(
-  state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
-) {
+function getNativeStatistics(state: PlayerState) {
   const playerId = state.player.playerId;
-  const entries = state.records
+  const entries = nativeRecords(state)
     .map(({ gameRecord }) => {
       const player = gameRecord.players.find((item) => item.accountId === playerId);
       return player ? { gameRecord, player } : null;
@@ -186,10 +176,7 @@ function getNativeStatistics(
   };
 }
 
-function serializeState(
-  state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>,
-  statistics: StatisticsPayload,
-) {
+function serializeState(state: PlayerState) {
   return {
     player: {
       ...state.player,
@@ -198,13 +185,13 @@ function serializeState(
           ? null
           : Number(state.player.latestTimestamp),
     },
-    records: state.records.map(serializeRecord),
+    records: nativeRecords(state).map(serializeRecord),
     modeKey: state.modeKey,
     periodStart: state.periodStart,
     periodEnd: state.periodEnd,
     rangeCovered: state.rangeCovered,
     stale: state.stale,
-    statistics,
+    statistics: getNativeStatistics(state),
   };
 }
 
@@ -229,106 +216,26 @@ async function hasNativePlayerRecords(cachedPlayerId: string) {
   );
 }
 
-async function getStatisticsWithFallback(input: {
-  host: string;
-  state: NonNullable<Awaited<ReturnType<typeof getPublicPlayerState>>>;
-  native: boolean;
-}) {
-  if (input.native) return getNativeStatistics(input.state);
+async function serveNativePlayer(event: Parameters<RequestHandler>[0]) {
+  const playerId = event.params.id?.trim();
+  if (!playerId || !/^\d+$/.test(playerId)) {
+    return json({ message: "올바른 플레이어 ID가 필요합니다." }, { status: 400 });
+  }
 
   try {
-    return await getPublicPlayerStatistics(input);
+    await runPublicPlayerCacheMaintenance();
+    const state = await getPublicPlayerState({ playerId, ...parseRange(event.url) });
+    if (!state || !(await hasNativePlayerRecords(state.player.id))) {
+      return json(
+        { message: "아직 수집된 4인전 기록이 없는 플레이어입니다." },
+        { status: 404 },
+      );
+    }
+    return json(serializeState(state));
   } catch (reason) {
-    console.warn("Serving player detail without fresh upstream statistics", reason);
-    return (
-      (await getCachedPublicPlayerStatistics(input.state)) ?? {
-        metadata: null,
-        extendedStats: null,
-      }
-    );
+    return errorResponse(reason);
   }
 }
 
-export const GET: RequestHandler = async (event) => {
-  const playerId = event.params.id?.trim();
-  if (!playerId || !/^\d+$/.test(playerId)) {
-    return json({ message: "올바른 플레이어 ID가 필요합니다." }, { status: 400 });
-  }
-
-  try {
-    await runPublicPlayerCacheMaintenance();
-    const range = parseRange(event.url);
-    const cached = await getPublicPlayerState({ playerId, ...range });
-    const native = cached ? await hasNativePlayerRecords(cached.player.id) : false;
-    const shouldRefresh =
-      !native &&
-      event.url.searchParams.get("refresh") !== "0" &&
-      (!cached || !cached.rangeCovered || cached.stale);
-
-    let state = cached;
-    if (shouldRefresh) {
-      try {
-        state = await refreshPublicPlayer({
-          host: event.url.host,
-          playerId,
-          ...range,
-        });
-      } catch (reason) {
-        if (!cached) throw reason;
-        console.warn("Serving cached player detail after upstream refresh failed", reason);
-        state = cached;
-      }
-    }
-
-    if (!state) {
-      return json({ message: "플레이어 정보를 찾지 못했습니다." }, { status: 404 });
-    }
-
-    const statistics = await getStatisticsWithFallback({
-      host: event.url.host,
-      state,
-      native,
-    });
-    return json(serializeState(state, statistics));
-  } catch (reason) {
-    return errorResponse(reason);
-  }
-};
-
-export const POST: RequestHandler = async (event) => {
-  const playerId = event.params.id?.trim();
-  if (!playerId || !/^\d+$/.test(playerId)) {
-    return json({ message: "올바른 플레이어 ID가 필요합니다." }, { status: 400 });
-  }
-
-  try {
-    await runPublicPlayerCacheMaintenance();
-    const range = parseRange(event.url);
-    const cached = await getPublicPlayerState({ playerId, ...range });
-    const native = cached ? await hasNativePlayerRecords(cached.player.id) : false;
-
-    if (cached && native) {
-      return json(serializeState(cached, getNativeStatistics(cached)));
-    }
-
-    const state = await refreshPublicPlayer({
-      host: event.url.host,
-      playerId,
-      ...range,
-      force: true,
-    });
-
-    if (!state) {
-      return json({ message: "플레이어 정보를 찾지 못했습니다." }, { status: 404 });
-    }
-
-    const statistics = await getPublicPlayerStatistics({
-      host: event.url.host,
-      state,
-      force: true,
-    });
-    return json(serializeState(state, statistics));
-  } catch (reason) {
-    return errorResponse(reason);
-  }
-};
+export const GET: RequestHandler = serveNativePlayer;
+export const POST: RequestHandler = serveNativePlayer;
