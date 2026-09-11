@@ -11,13 +11,26 @@ function requireEnv(name: string, value: string | undefined) {
 }
 
 export const privateEnv = {
-  databaseUrl: requireEnv("DATABASE_URL", privateRuntimeEnv.DATABASE_URL),
+  get databaseUrl() {
+    return requireEnv("DATABASE_URL", privateRuntimeEnv.DATABASE_URL);
+  },
 } as const;
 
 export const publicEnv = {
-  siteName: publicRuntimeEnv.PUBLIC_SITE_NAME || "퐁냐",
-  siteUrl: requireEnv("PUBLIC_SITE_URL", publicRuntimeEnv.PUBLIC_SITE_URL),
+  get siteName() {
+    return publicRuntimeEnv.PUBLIC_SITE_NAME || "퐁냐";
+  },
+  get siteUrl() {
+    return requireEnv("PUBLIC_SITE_URL", publicRuntimeEnv.PUBLIC_SITE_URL);
+  },
 } as const;
 
-export const productionOrigin = new URL(publicEnv.siteUrl).origin;
+let _productionOrigin: string | undefined;
+export function getProductionOrigin() {
+  if (!_productionOrigin) {
+    _productionOrigin = new URL(publicEnv.siteUrl).origin;
+  }
+  return _productionOrigin;
+}
+
 export const isProductionRuntime = !dev;

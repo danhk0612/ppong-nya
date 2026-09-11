@@ -81,6 +81,7 @@ export async function getPublicPlayerState(input: {
   periodStart: Date;
   periodEnd: Date;
   externalModeIds?: number[];
+  forceRefresh?: boolean;
 }): Promise<PublicPlayerState | null> {
   const player = await getCachedPlayer(input.playerId);
   if (!player) return null;
@@ -98,13 +99,16 @@ export async function getPublicPlayerState(input: {
     externalModeIds,
   });
 
+  const rangeCovered = records.length > 0;
+  const stale = false;
+
   return {
     player,
     records,
     modeKey: getPublicPlayerModeKey(externalModeIds),
     periodStart: input.periodStart,
     periodEnd: input.periodEnd,
-    rangeCovered: true,
-    stale: false,
+    rangeCovered,
+    stale,
   };
 }

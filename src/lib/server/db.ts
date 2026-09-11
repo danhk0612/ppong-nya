@@ -27,8 +27,12 @@ function withDefaultPoolPolicy(databaseUrl: string) {
   return url.toString();
 }
 
-const prismaClientSingleton = () =>
-  new PrismaClient({
+const globalForPrisma = globalThis as typeof globalThis & {
+  prisma?: PrismaClient;
+};
+
+function prismaClientSingleton() {
+  return new PrismaClient({
     datasources: {
       db: {
         url: withDefaultPoolPolicy(privateEnv.databaseUrl),
@@ -40,10 +44,7 @@ const prismaClientSingleton = () =>
       timeout: DEFAULT_TRANSACTION_TIMEOUT_MS,
     },
   });
-
-const globalForPrisma = globalThis as typeof globalThis & {
-  prisma?: ReturnType<typeof prismaClientSingleton>;
-};
+}
 
 /**
  * Server-only Prisma client.
@@ -58,8 +59,11 @@ const globalForPrisma = globalThis as typeof globalThis & {
  * to 10 seconds to establish a database connection. Interactive transactions
  * wait up to 5 seconds to start and may run for up to 10 seconds.
  */
-export const db = globalForPrisma.prisma ?? prismaClientSingleton();
-
-if (dev) {
-  globalForPrisma.prisma = db;
-}
+export const db = new Proxy({} as PrismaClient, {
+  get(target, prop, receiver) {
+    if (!globalForPrisma.prisma) {
+      globalForPrisma.prisma = prismaClientSingleton();
+    }
+    return Reflect.get(globalForPrisma.prisma, prop, receiver);
+  },
+});
