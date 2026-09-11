@@ -97,13 +97,24 @@ export const GET: RequestHandler = async ({ url }) => {
   let players = await findLocalPlayers(query, limit);
   if (!players.length) {
     try {
+      console.log(`[player-search] local cache miss for query=${JSON.stringify(query)}, trying native collector`);
       const nativePlayers = await searchNativeCollector(query, limit);
+      console.log(`[player-search] native collector returned ${nativePlayers.length} results for query=${JSON.stringify(query)}`);
+      
       if (nativePlayers.length) {
         await cacheNativePlayers(nativePlayers);
         players = await findLocalPlayers(query, limit);
+        console.log(`[player-search] cached ${nativePlayers.length} players, now ${players.length} in local DB`);
       }
     } catch (error) {
-      console.warn("[player-search] native fallback failed", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(`[player-search] native fallback failed for query=${JSON.stringify(query)}: ${errorMessage}`);
+      
+      if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("fetch failed")) {
+        console.error("[player-search] collector service appears to be down or unreachable");
+      } else if (errorMessage.includes("HTTP 502") || errorMessage.includes("HTTP 503")) {
+        console.error("[player-search] collector returned error, check collector logs for auth/connection issues");
+      }
     }
   }
 
