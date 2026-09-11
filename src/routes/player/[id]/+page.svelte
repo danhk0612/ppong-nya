@@ -57,6 +57,7 @@
       metadata: PlayerMetadata | null;
       extendedStats: PlayerExtendedStats | null;
     };
+    message?: string;
   };
 
   let player = $state<ApiPlayer | null>(null);
@@ -139,6 +140,10 @@
     metadata = payload.statistics.metadata;
     extendedStats = payload.statistics.extendedStats;
     records = payload.records;
+    
+    if (payload.message && records.length === 0) {
+      console.info(payload.message);
+    }
   }
 
   async function loadData(force = false) {
@@ -309,6 +314,13 @@
       description={errorMessage}
       actionLabel="검색으로 돌아가기"
       actionHref="/players"
+    />
+  {:else if !metadata && player}
+    <StatusBlock
+      class="mt-8"
+      tone="empty"
+      title="수집된 대국 기록이 없습니다"
+      description="이 플레이어가 검색되었지만 아직 collector가 대국 기록을 수집하지 않았습니다. collector가 라이브 게임을 모니터링하면서 이 플레이어의 대국을 발견하면 자동으로 수집됩니다."
     />
   {:else if metadata}
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
