@@ -67,6 +67,7 @@
   let loading = $state(true);
   let refreshing = $state(false);
   let errorMessage = $state("");
+  let infoMessage = $state("");
   let periodPreset = $state("30");
   let startDate = $state("");
   let endDate = $state("");
@@ -140,14 +141,12 @@
     metadata = payload.statistics.metadata;
     extendedStats = payload.statistics.extendedStats;
     records = payload.records;
-    
-    if (payload.message && records.length === 0) {
-      console.info(payload.message);
-    }
+    infoMessage = payload.message || "";
   }
 
   async function loadData(force = false) {
     errorMessage = "";
+    infoMessage = "";
     if (force) refreshing = true;
     else loading = true;
 
@@ -314,6 +313,12 @@
       description={errorMessage}
       actionLabel="검색으로 돌아가기"
       actionHref="/players"
+    />
+  {:else if infoMessage}
+    <StatusBlock
+      class="mt-8"
+      tone="info"
+      title={infoMessage}
     />
   {:else if !metadata && player}
     <StatusBlock

@@ -117,9 +117,86 @@ Collector가 해당 플레이어의 게임을 아직 수집하지 않았습니�
    docker compose logs collector --tail=100 | grep "collected\|materialized"
    ```
 
-## HTTP 429 (Too Many Requests)
+## HTTP 429 (Too Many Requests) 및 Upstream Fetch 실패
 
 ### 증상
+- 플레이어 페이지 접근 시 "외부 API 요청 한도에 도달했습니다" 메시지
+- 애플리케이션 로그에 반복적인 "upstream fetch failed status=429" 메시지
+- 레코드가 없는 플레이어 페이지를 열 때마다 upstream API 호출 시도
+
+### 원인
+외부 API (amae-koromo) rate limit에 도달하여 일시적으로 요청이 차단되었습니다.
+
+### 해결
+현재 버전에서는 **자동 cooldown 메커니즘**이 구현되어 있습니다:
+
+1. **Upstream fetch 실패 시 동작**:
+   - 429 또는 기타 에러 발생 시 `lastUpdatedAt`가 업데이트됩니다
+   - 이후 **10분간 cooldown** 적용 (재시도 안 함)
+   - 로그: `[public-player-cache] skipping refresh due to cooldown`
+
+2. **정상 데이터가 있는 경우**:
+   - 캐시된 레코드가 있으면 24시간 동안 재사용
+   - stale해진 후에만 upstream refresh 시도
+
+3. **사용자 메시지**:
+   - `외부 API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.`
+   - `최근 시도 후 잠시 대기 중입니다. 잠시 후 다시 시도해주세요.`
+
+### 디버깅
+
+```bash
+# 로그에서 cooldown 동작 확인
+docker compose logs app --tail=100 | grep "public-player-cache"
+
+# 429 에러 빈도 확인
+docker compose logs app --tail=1000 | grep -c "status=429"
+
+# Cooldown 중인 플레이어 확인
+docker compose logs app --tail=100 | grep "skipping refresh due to cooldown"
+```
+
+### 수동 해결
+
+만약 특정 플레이어의 cooldown을 해제하려면:
+
+```sql
+-- Cooldown 상태 확인 (최근 10분 이내 업데이트)
+SELECT player_id, nickname, last_updated_at,
+       TIMESTAMPDIFF(MINUTE, last_updated_at, NOW()) as minutes_ago
+FROM cached_players
+WHERE last_updated_at > NOW() - INTERVAL 10 MINUTE
+ORDER BY last_updated_at DESC;
+
+-- Cooldown 수동 해제 (특정 플레이어)
+UPDATE cached_players 
+SET last_updated_at = NOW() - INTERVAL 1 HOUR
+WHERE player_id = 'PLAYER_ID';
+```
+
+주의: 수동 cooldown 해제 후에도 upstream API가 여전히 429를 반환하면 다시 cooldown이 적용됩니다.
+
+### 구현 세부사항
+
+**Source 통합**: Upstream (amae-koromo)과 Native (collector)에서 수집한 레코드가 모두 표시됩니다.
+
+```sql
+-- 플레이어의 레코드 소스 확인
+SELECT gr.source, COUNT(*) as count
+FROM cached_players cp
+JOIN cached_player_game_records cpgr ON cp.id = cpgr.cached_player_id
+JOIN game_records gr ON cpgr.game_record_id = gr.id
+WHERE cp.player_id = 'PLAYER_ID'
+GROUP BY gr.source;
+```
+
+기대 결과:
+- `majsoul-native`: Collector가 실시간 수집한 게임
+- `amae-koromo`: Upstream API에서 가져온 과거 게임
+
+## HTTP 429 (Too Many Requests) - Legacy Issue
+
+### 증상 (이전 버전)
 - 이전 버전에서 플레이어 페이지 접근 시 HTTP 429 에러
 - "x-cap-token-required" 메시지
 

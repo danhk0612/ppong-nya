@@ -137,7 +137,90 @@ npm run dev
    - 최신 레코드 가져오기
    - 통계 재계산
 
-#### 5. 기간/탁 필터
+#### 5. Rate Limit (429) 및 Cooldown 동작
+
+**목적**: Upstream API rate limit 발생 시 자동 cooldown이 정상 작동하는지 확인
+
+1. **Rate limit 유도** (선택 사항, 조심해서 수행):
+   - 레코드가 없는 여러 플레이어 페이지를 연속으로 빠르게 접근
+   - 또는 외부 API 미러가 이미 rate limit 상태일 때 테스트
+
+2. **429 발생 시 콘솔 로그**:
+   ```
+   [public-player-cache] refreshing data playerId=... recordCount=0
+   [public-player-cache] fetching upstream records path=player_records/...
+   [public-player-cache] upstream fetch failed status=429
+   [public-player-cache] rate limited (429) for playerId=..., cooldown active for 10 minutes
+   ```
+
+3. **UI 메시지 확인**:
+   - "외부 API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요."
+
+4. **Cooldown 동작 확인**:
+   - 같은 플레이어 페이지를 즉시 다시 열기
+   - 콘솔 로그:
+     ```
+     [public-player-cache] skipping refresh due to cooldown playerId=... lastUpdatedAt=...
+     ```
+   - UI 메시지:
+     - "최근 시도 후 잠시 대기 중입니다. 잠시 후 다시 시도해주세요."
+
+5. **Cooldown 후 재시도**:
+   - 10분 후 같은 플레이어 페이지 다시 접근
+   - Upstream fetch 재시도 확인
+
+**예상 동작**:
+- 429 에러 발생 시 즉시 10분 cooldown 적용
+- Cooldown 기간 내에는 추가 upstream 요청 안 함
+- 매 요청마다 429를 유발하지 않음 (무한 재시도 방지)
+- 이미 레코드가 있는 플레이어는 cooldown 영향 없음
+
+**DB 확인**:
+```sql
+-- Cooldown 중인 플레이어 확인
+SELECT player_id, nickname, last_updated_at,
+       TIMESTAMPDIFF(MINUTE, last_updated_at, NOW()) as minutes_ago
+FROM cached_players
+WHERE last_updated_at > NOW() - INTERVAL 10 MINUTE
+  AND (SELECT COUNT(*) FROM cached_player_game_records 
+       WHERE cached_player_id = cached_players.id) = 0
+ORDER BY last_updated_at DESC;
+```
+
+#### 6. Source 통합 검증
+
+**목적**: Upstream (amae-koromo)과 Native (collector)에서 수집한 레코드가 모두 표시되는지 확인
+
+1. **Collector로 수집된 플레이어**:
+   - Collector가 실행 중일 때 라이브 게임을 플레이한 플레이어 확인
+   - 해당 플레이어 페이지 접근
+   - Native 레코드 확인
+
+2. **Upstream API에서 가져온 레코드 추가**:
+   - "새로고침" 버튼으로 강제 upstream fetch
+   - 추가 레코드 확인
+
+3. **통합 표시 확인**:
+   ```sql
+   SELECT gr.source, COUNT(*) as count
+   FROM cached_players cp
+   JOIN cached_player_game_records cpgr ON cp.id = cpgr.cached_player_id
+   JOIN game_records gr ON cpgr.game_record_id = gr.id
+   WHERE cp.player_id = 'PLAYER_ID'
+   GROUP BY gr.source;
+   ```
+   
+   기대 결과:
+   ```
+   majsoul-native | X
+   amae-koromo    | Y
+   ```
+
+4. **UI에서 확인**:
+   - 플레이어 페이지의 대국 기록 목록에 두 소스의 레코드가 모두 표시
+   - 통계가 모든 레코드를 포함하여 계산됨
+
+#### 7. 기간/탁 필터
 
 1. 플레이어 페이지에서 기간 선택:
    - 최근 7일
