@@ -219,6 +219,16 @@ async function serveNativePlayer(event: Parameters<RequestHandler>[0]) {
         { status: 404 },
       );
     }
+    
+    const serialized = serializeState(state);
+    
+    if (serialized.records.length === 0) {
+      return json({
+        ...serialized,
+        message: "플레이어가 검색되었지만 수집된 대국 기록이 없습니다. collector가 이 플레이어의 대국을 수집하면 통계가 표시됩니다.",
+      });
+    }
+    
     return json(serializeState(state));
   } catch (reason) {
     return errorResponse(reason);
