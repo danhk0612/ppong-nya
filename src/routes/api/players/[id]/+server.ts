@@ -176,6 +176,18 @@ function getNativeStatistics(state: PlayerState) {
 }
 
 function serializeState(state: PlayerState) {
+  let message: string | undefined;
+  
+  if (state.upstreamMessage === "rate_limited") {
+    message = "외부 API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.";
+  } else if (state.upstreamMessage === "in_cooldown") {
+    message = "최근 시도 후 잠시 대기 중입니다. 잠시 후 다시 시도해주세요.";
+  } else if (state.upstreamMessage === "fetch_failed") {
+    message = "외부 API에서 데이터를 가져오는 중 오류가 발생했습니다.";
+  } else if (state.records.length === 0) {
+    message = "수집된 게임 기록이 없습니다.";
+  }
+  
   return {
     player: {
       ...state.player,
@@ -191,6 +203,7 @@ function serializeState(state: PlayerState) {
     rangeCovered: state.rangeCovered,
     stale: state.stale,
     statistics: getNativeStatistics(state),
+    message,
   };
 }
 

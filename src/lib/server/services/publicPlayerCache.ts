@@ -7,6 +7,7 @@ const SUPPORTED_YONMA_MODE_IDS = [2, 3, 5, 6, 8, 9, 11, 12, 15, 16] as const;
 const SUPPORTED_YONMA_MODE_SET = new Set<number>(SUPPORTED_YONMA_MODE_IDS);
 const RECORDS_PER_FETCH = 100;
 const STALE_THRESHOLD_HOURS = 24;
+const FAILURE_COOLDOWN_MINUTES = 10;
 
 function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 15)}`;
@@ -32,6 +33,7 @@ export type PublicPlayerState = {
   periodEnd: Date;
   rangeCovered: boolean;
   stale: boolean;
+  upstreamMessage?: string;
 };
 
 function normalizeModes(modes?: number[]) {
@@ -72,7 +74,7 @@ export async function getCachedPlayerRecords(input: {
     where: {
       cachedPlayerId: input.cachedPlayerId,
       gameRecord: {
-        source: NATIVE_SOURCE,
+        source: { in: [NATIVE_SOURCE, UPSTREAM_SOURCE] },
         startedAt: { gte: input.periodStart, lte: input.periodEnd },
         externalModeId: { in: externalModeIds },
       },
@@ -267,14 +269,20 @@ export async function getPublicPlayerState(input: {
     externalModeIds,
   });
 
+  const hasRecords = records.length > 0;
+  const dataIsStale = isStale(player.lastUpdatedAt, STALE_THRESHOLD_HOURS);
+  const inCooldown = !isStale(player.lastUpdatedAt, FAILURE_COOLDOWN_MINUTES / 60);
+  
   const needsRefresh = 
     input.forceRefresh ||
-    records.length === 0 ||
-    isStale(player.lastUpdatedAt, STALE_THRESHOLD_HOURS);
+    (hasRecords && dataIsStale) ||
+    (!hasRecords && !inCooldown);
+
+  let upstreamMessage: string | undefined;
 
   if (needsRefresh) {
     console.log(
-      `[public-player-cache] refreshing data playerId=${input.playerId} forceRefresh=${input.forceRefresh} recordCount=${records.length} stale=${isStale(player.lastUpdatedAt, STALE_THRESHOLD_HOURS)}`,
+      `[public-player-cache] refreshing data playerId=${input.playerId} forceRefresh=${input.forceRefresh} recordCount=${records.length} stale=${dataIsStale} inCooldown=${inCooldown}`,
     );
     
     try {
@@ -305,11 +313,34 @@ export async function getPublicPlayerState(input: {
           periodEnd: input.periodEnd,
           externalModeIds,
         });
+      } else {
+        await db.cachedPlayer.update({
+          where: { id: player.id },
+          data: { lastUpdatedAt: new Date() },
+        });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.warn(`[public-player-cache] upstream fetch failed for playerId=${input.playerId}: ${errorMessage}`);
+      const isRateLimited = errorMessage.includes("429");
+      
+      await db.cachedPlayer.update({
+        where: { id: player.id },
+        data: { lastUpdatedAt: new Date() },
+      });
+      
+      if (isRateLimited) {
+        console.warn(`[public-player-cache] rate limited (429) for playerId=${input.playerId}, cooldown active for ${FAILURE_COOLDOWN_MINUTES} minutes`);
+        upstreamMessage = "rate_limited";
+      } else {
+        console.warn(`[public-player-cache] upstream fetch failed for playerId=${input.playerId}: ${errorMessage}`);
+        upstreamMessage = "fetch_failed";
+      }
     }
+  } else if (!hasRecords && inCooldown) {
+    console.log(
+      `[public-player-cache] skipping refresh due to cooldown playerId=${input.playerId} lastUpdatedAt=${player.lastUpdatedAt?.toISOString()}`,
+    );
+    upstreamMessage = "in_cooldown";
   }
 
   const rangeCovered = records.length > 0;
@@ -323,5 +354,6 @@ export async function getPublicPlayerState(input: {
     periodEnd: input.periodEnd,
     rangeCovered,
     stale,
+    upstreamMessage,
   };
 }
